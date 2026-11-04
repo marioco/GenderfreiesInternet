@@ -37,7 +37,7 @@ Nach einer Aktualisierung das neue ZIP entpacken und die Erweiterung auf der Erw
 
 ## Wichtiger Hinweis zur Beta
 
-Die aktuelle Beta verbindet sich mit dem Filterdienst auf der Laura/Spark im lokalen Netzwerk. Außerhalb dieses Netzwerks ist der Filterdienst derzeit nicht erreichbar. Der Server, die Datenbank, Moderation und Crawler sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
+Die öffentliche Beta enthält bis zur Freigabe der richtigen Serveradresse bewusst `http://0.0.0.0:18080` als Platzhalter. Der Filterdienst ist deshalb mit diesem Download noch nicht erreichbar. Der Server, die Datenbank, Moderation und Crawler sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
 
 ## Datenschutz
 

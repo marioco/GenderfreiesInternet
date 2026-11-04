@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Genderfreies Internet</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="logo pending" aria-hidden="true">GF</span>
+        <h1>Genderfreies Internet</h1>
+      </header>
+
+      <section class="status-card" aria-live="polite">
+        <span id="status-dot" class="status-dot pending" aria-hidden="true"></span>
+        <div>
+          <strong id="status-title">Verbindung wird geprüft …</strong>
+          <p id="status-detail">Der lokale Filterdienst wird abgefragt.</p>
+        </div>
+        <button id="retry" type="button">Neu prüfen</button>
+      </section>
+
+      <section class="report-menu" aria-labelledby="report-title">
+        <h2 id="report-title">Melden</h2>
+        <p id="current-domain">Geöffnete Seite wird erkannt …</p>
+        <button
+          class="report-option"
+          data-category="hard"
+          type="button"
+          title="z. B. *Innen"
+          disabled
+        >
+          Hartes Gendern
+        </button>
+        <button
+          class="report-option"
+          data-category="light"
+          type="button"
+          title="z. B. Studierende"
+          disabled
+        >
+          Leichtes Gendern
+        </button>
+        <p id="report-unavailable" role="status" hidden>Diese Seite kann nicht gemeldet werden.</p>
+        <p id="report-feedback" role="status" aria-live="polite"></p>
+      </section>
+
+      <nav aria-label="Plugin-Menü">
+        <a id="open-settings" href="settings.html" target="_blank">Einstellungen</a>
+        <a href="help.html" target="_blank">Hilfe</a>
+      </nav>
+
+      <section class="beta-tests" aria-labelledby="test-title">
+        <h2 id="test-title">Testen:</h2>
+        <a class="test-button primary" href="testplan.html" target="_blank">
+          Vollständigen Betatest öffnen
+        </a>
+        <a
+          class="test-button"
+          href="https://www.google.de/search?q=site%3Aexample.de+Example+Domain"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Ausblendung testen
+        </a>
+        <a
+          class="test-button"
+          href="https://www.google.de/search?q=site%3Aiana.org+%22IANA-managed+Reserved+Domains%22"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Grünen Stern testen
+        </a>
+      </section>
+
+    </main>
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

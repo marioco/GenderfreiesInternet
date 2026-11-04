@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Genderfreies Internet – einfacher Betatest</title>
+    <link rel="stylesheet" href="testplan.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <span aria-hidden="true">★</span>
+        <div>
+          <p>SUCHFILTER BETA</p>
+          <h1>Einfacher Funktionstest</h1>
+        </div>
+      </header>
+      <ol class="steps">
+        <li>Ich setze den Vorher-Zustand: alle zehn Testdomains sind unbekannt.</li>
+        <li>Suchlinks öffnen: alle Ergebnisse bleiben sichtbar und haben einen grauen Stern.</li>
+        <li>Je eine harte und leichte Meldung absenden.</li>
+        <li>Ich setze den Nachher-Zustand; danach dieselben Suchen neu laden.</li>
+        <li>Gesperrte Ergebnisse fehlen; geprüft und Ausnahme tragen einen grünen Stern.</li>
+      </ol>
+      <p class="note">
+        Google News verarbeitet nur Karten mit erkennbarer Verlagsdomain. Opake Google-interne
+        Karten bleiben sicher sichtbar.
+      </p>
+      <section id="tests" aria-label="Zehn Testseiten"></section>
+    </main>
+    <script src="testplan.js" type="module"></script>
+  </body>
+</html>

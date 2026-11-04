@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Genderfreies Internet – Einstellungen</title>
+    <link rel="stylesheet" href="info-page.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Genderfreies Internet</p>
+      <h1>Einstellungen</h1>
+      <div class="notice">
+        <strong>Die zentrale Filterung ist aktiv.</strong>
+        <p>
+          In dieser Betaversion gelten die zentral geprüften Domainentscheidungen automatisch.
+          Diese Seite ist die Einstellungsseite der installierten Browser-Erweiterung.
+        </p>
+      </div>
+      <h2>Freiwillige Statistik</h2>
+      <label class="setting-row" for="share-statistics">
+        <input id="share-statistics" type="checkbox" />
+        <span>
+          <strong>Ausblendungsstatistik teilen</strong><br />
+          Hilft zu zählen, wie oft gesperrte Domains aus Suchergebnissen entfernt wurden.
+        </span>
+      </label>
+      <p>
+        Diese Funktion ist standardmäßig ausgeschaltet. Bei Zustimmung werden nur Domain und
+        zusammengefasste Anzahl übertragen – keine Suchbegriffe, URL-Pfade, Suchmaschine,
+        Uhrzeit, Installationskennung oder Seiteninhalte. Noch nicht gesendete Zähler werden beim
+        Ausschalten gelöscht. Bereits übermittelte, nicht zuordenbare Summen können nicht
+        nachträglich einer Person zugeordnet oder einzeln gelöscht werden.
+      </p>
+      <p id="settings-status" class="status-line" role="status" aria-live="polite"></p>
+      <h2>Feste Regeln</h2>
+      <ul>
+        <li>Gesperrte Domains werden in Suchergebnissen ausgeblendet.</li>
+        <li>Geprüfte Domains und Ausnahmen erhalten einen grünen Stern.</li>
+        <li>Noch nicht geprüfte Domains erhalten einen grauen Stern.</li>
+      </ul>
+      <h2>Erweiterung verwalten</h2>
+      <p>
+        Aktivieren, deaktivieren oder entfernen lässt sich GF in der Erweiterungsverwaltung des
+        Browsers: in Chrome unter <code>chrome://extensions</code>, in Brave unter
+        <code>brave://extensions</code>.
+      </p>
+      <p class="page-links">
+        <a href="help.html">Hilfe öffnen</a>
+        <a href="testplan.html">Vollständigen Betatest öffnen</a>
+      </p>
+    </main>
+    <script src="settings.js"></script>
+  </body>
+</html>

@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "Genderfreies Internet",
+  "version": "0.4.4",
+  "description": "Blendet Webseiten mit Gendersprache aus Suchergebnissen aus. Ein Stern zeigt geprüfte und noch unbekannte Domains.",
+  "icons": {
+    "16": "gf-icon-16.png",
+    "32": "gf-icon-32.png",
+    "48": "gf-icon-48.png",
+    "128": "gf-icon-128.png"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://www.google.de/*",
+    "https://www.google.com/*",
+    "https://news.google.com/*",
+    "https://www.bing.com/*",
+    "https://search.brave.com/*",
+    "https://duckduckgo.com/*",
+    "https://html.duckduckgo.com/*",
+    "http://0.0.0.0:18080/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.google.de/*",
+        "https://www.google.com/*",
+        "https://news.google.com/*",
+        "https://www.bing.com/*",
+        "https://search.brave.com/*",
+        "https://duckduckgo.com/*",
+        "https://html.duckduckgo.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_icon": {
+      "16": "gf-icon-16.png",
+      "32": "gf-icon-32.png"
+    },
+    "default_title": "Genderfreies Internet – Filterdienst wird geprüft",
+    "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": true
+  }
+}

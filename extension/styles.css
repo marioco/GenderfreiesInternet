@@ -1,0 +1,30 @@
+.suchfilter-hidden {
+  display: none !important;
+}
+
+.suchfilter-marker {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  margin: 0 0.45rem 0.25rem 0;
+}
+
+.suchfilter-label {
+  color: #111 !important;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.suchfilter-star {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.suchfilter-star-known {
+  color: #16853b;
+}
+
+.suchfilter-star-unknown {
+  color: #777;
+}
