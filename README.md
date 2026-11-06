@@ -4,7 +4,7 @@
 
 Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google News, Bing, Brave Search und DuckDuckGo aus. Ein grüner Stern kennzeichnet positiv geprüfte Domains, ein grauer Stern noch nicht geprüfte Domains.
 
-- **Aktuelle Beta-Version:** 0.8.5
+- **Aktuelle Beta-Version:** 0.8.6
 - **Browser:** Google Chrome und Brave
 
 ## Installation
@@ -42,7 +42,7 @@ Hintergrund aktualisiert.
 
 ## Datenstand und Serververbindung
 
-Version 0.8.5 verwendet den produktiven Filterdienst auf
+Version 0.8.6 verwendet den produktiven Filterdienst auf
 [`lauraklaertdas.de`](https://lauraklaertdas.de/genderfrei/). Der Browser lädt einen
 signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden
 Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und

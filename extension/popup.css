@@ -219,28 +219,6 @@ nav a:hover {
   background: #e8eeea;
 }
 
-.beta-tests {
-  display: grid;
-  gap: 7px;
-  padding-top: 12px;
-}
-
-.test-button {
-  border: 1px solid #17713a;
-  border-radius: 8px;
-  color: #146330;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 8px 10px;
-  text-align: center;
-  text-decoration: none;
-}
-
-.test-button.primary {
-  background: #17713a;
-  color: white;
-}
-
 .status-dot {
   background: #b2b9b5;
   border-radius: 50%;
@@ -301,13 +279,5 @@ nav a:hover {
 
   nav a:hover {
     background: #28362e;
-  }
-
-  .test-button {
-    color: #75d996;
-  }
-
-  .test-button.primary {
-    color: white;
   }
 }
