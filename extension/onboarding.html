@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Genderfreies Internet – Einrichtung</title>
+    <link rel="stylesheet" href="info-page.css" />
+    <script src="onboarding.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Genderfreies Internet</p>
+      <h1>Einrichtung abschließen</h1>
+
+      <section class="notice" aria-labelledby="pin-title">
+        <h2 id="pin-title">GF-Symbol anheften – empfohlen</h2>
+        <p>
+          Der Filter arbeitet auch ohne angeheftetes Symbol. Angeheftet bleiben jedoch Status,
+          Domainmeldungen und dringende Updatehinweise jederzeit sichtbar.
+        </p>
+        <ol class="onboarding-steps">
+          <li>Oben rechts das Erweiterungsmenü mit dem Puzzleteil öffnen.</li>
+          <li><strong>Genderfreies Internet</strong> suchen.</li>
+          <li>Daneben auf <strong>Anheften</strong> beziehungsweise das Pinnadel-Symbol klicken.</li>
+        </ol>
+        <p id="pin-status" class="status-line" role="status" aria-live="polite">
+          Der aktuelle Zustand wird geprüft …
+        </p>
+        <div class="onboarding-actions">
+          <button id="check-pin" type="button">Erneut prüfen</button>
+          <button id="finish-onboarding" class="secondary" type="button">
+            Ohne Anheften fortfahren
+          </button>
+        </div>
+      </section>
+
+      <p>
+        Diese Entscheidung kann jederzeit im Erweiterungsmenü von Chrome oder Brave geändert
+        werden. Sie beeinflusst die Filterfunktion nicht.
+      </p>
+      <p class="page-links">
+        <a href="settings.html">Filterstärke einstellen</a>
+        <a href="help.html">Hilfe öffnen</a>
+      </p>
+
+      <section class="support-card" aria-labelledby="support-title">
+        <h2 id="support-title">Betrieb unterstützen</h2>
+        <p>
+          Genderfreies Internet ist kostenlos. Entwicklung, Serverbetrieb und KI-Prüfungen
+          verursachen laufende Kosten. Wenn Sie das Projekt freiwillig unterstützen möchten,
+          können Sie über PayPal spenden. Die Nutzung funktioniert uneingeschränkt auch ohne
+          Spende.
+        </p>
+        <p class="support-links">
+          <a
+            class="donate-button"
+            href="https://www.paypal.com/donate/?hosted_button_id=B2QX8KKMAK5TG"
+            target="_blank"
+            rel="noreferrer"
+          >Jetzt freiwillig über PayPal spenden</a>
+          <a href="https://lauraklaertdas.de/unterstuetzen/" target="_blank" rel="noreferrer"
+            >Weitere Möglichkeiten</a
+          >
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

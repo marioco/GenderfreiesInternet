@@ -7,9 +7,10 @@ Brave:  brave://extensions
 1. Entwicklermodus einschalten.
 2. "Entpackte Erweiterung laden" wählen.
 3. Diesen Ordner auswählen.
-4. Das GF-Symbol öffnen. Bis zur Freigabe der Serveradresse bleibt der Status grau.
-5. Nach einer späteren Serverfreigabe: "Neu prüfen" wählen.
-6. Unter "Testen" den vollständigen Betatest öffnen und dem kurzen Ablauf folgen.
+4. Auf der Einrichtungsseite das GF-Symbol anheften oder freiwillig überspringen.
+5. Das GF-Symbol öffnen. Der Status muss grün sein.
+6. Falls der Status rot ist: "Neu prüfen" wählen und lokalen Netzwerkzugriff erlauben.
+7. Unter "Testen" den vollständigen Betatest öffnen und dem kurzen Ablauf folgen.
 
 Eine Domain wird auf der betreffenden Webseite über das GF-Symbol gemeldet.
 In Suchergebnissen erscheint bewusst nur das grüne oder graue GF★.

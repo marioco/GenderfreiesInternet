@@ -4,7 +4,7 @@
 
 Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google News, Bing, Brave Search und DuckDuckGo aus. Ein grüner Stern kennzeichnet positiv geprüfte Domains, ein grauer Stern noch nicht geprüfte Domains.
 
-- **Aktuelle Beta-Version:** 0.4.4
+- **Aktuelle Beta-Version:** 0.8.3
 - **Browser:** Google Chrome und Brave
 
 ## Installation
@@ -16,15 +16,19 @@ Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google N
 5. **Entpackte Erweiterung laden** wählen.
 6. Den entpackten Ordner `suchfilter-beta` auswählen.
 
-Nach einer Aktualisierung das neue ZIP entpacken und die Erweiterung auf der Erweiterungsseite neu laden.
+Nach einer Aktualisierung das neue ZIP entpacken, die Dateien im bisher geladenen
+Erweiterungsordner vollständig ersetzen und die Erweiterung anschließend auf der
+Erweiterungsseite neu laden.
 
 ## Was die Erweiterung kann
 
-- Domains mit hartem oder leichtem Gendern aus Suchergebnissen ausblenden
 - positiv geprüfte Domains mit einem grünen Stern markieren
 - unbekannte Domains mit einem grauen Stern markieren
 - eine aktuell geöffnete Website zur Prüfung melden
+- hartes Gendern standardmäßig und leichtes Gendern auf Wunsch ausblenden
 - Domain-Ausnahmen berücksichtigen
+- den signierten Datenbestand und zwischenzeitliche Änderungen automatisch aktualisieren
+- Updatehinweise und zeitweilige Meldesperren sichtbar am GF-Symbol anzeigen
 - Hilfe, Einstellungen und einen eingebauten Testplan anzeigen
 
 ## Unterstützte Suchmaschinen
@@ -35,9 +39,13 @@ Nach einer Aktualisierung das neue ZIP entpacken und die Erweiterung auf der Erw
 - Brave Search
 - DuckDuckGo
 
-## Wichtiger Hinweis zur Beta
+## Datenstand und Serververbindung
 
-Die öffentliche Beta enthält bis zur Freigabe der richtigen Serveradresse bewusst `http://0.0.0.0:18080` als Platzhalter. Der Filterdienst ist deshalb mit diesem Download noch nicht erreichbar. Der Server, die Datenbank, Moderation und Crawler sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
+Version 0.8.3 verwendet den produktiven Filterdienst auf
+[`lauraklaertdas.de`](https://lauraklaertdas.de/genderfrei/). Der Browser lädt einen
+signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden
+Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und
+KI-Prüfung sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
 
 ## Datenschutz
 

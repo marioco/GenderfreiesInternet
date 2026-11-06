@@ -22,6 +22,21 @@
         <button id="retry" type="button">Neu prüfen</button>
       </section>
 
+      <section id="cooldown-card" class="cooldown-card" aria-labelledby="cooldown-title" hidden>
+        <h2 id="cooldown-title">Ungewöhnliche Meldefrequenz</h2>
+        <p id="cooldown-detail"></p>
+      </section>
+
+      <section id="update-card" class="update-card" aria-labelledby="update-title" hidden>
+        <h2 id="update-title">Dringendes Update verfügbar</h2>
+        <p id="update-detail"></p>
+        <div class="update-actions">
+          <button id="request-update" type="button">Update laden</button>
+          <a href="help.html#aktualisierung" target="_blank">Anleitung</a>
+        </div>
+        <p id="update-feedback" role="status" aria-live="polite"></p>
+      </section>
+
       <section class="report-menu" aria-labelledby="report-title">
         <h2 id="report-title">Melden</h2>
         <p id="current-domain">Geöffnete Seite wird erkannt …</p>

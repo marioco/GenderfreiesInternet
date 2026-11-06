@@ -11,12 +11,35 @@
       <p class="eyebrow">Genderfreies Internet</p>
       <h1>Einstellungen</h1>
       <div class="notice">
-        <strong>Die zentrale Filterung ist aktiv.</strong>
+        <strong>Die zentrale Prüfung ist aktiv.</strong>
         <p>
-          In dieser Betaversion gelten die zentral geprüften Domainentscheidungen automatisch.
-          Diese Seite ist die Einstellungsseite der installierten Browser-Erweiterung.
+          Diese Seite steuert, welche zentral geprüften Domainentscheidungen in deinen
+          Suchergebnissen ausgeblendet werden.
         </p>
       </div>
+      <h2>Filterstärke</h2>
+      <fieldset class="setting-group">
+        <legend class="visually-hidden">Gewünschte Filterstärke auswählen</legend>
+        <label class="setting-row" for="filter-hard">
+          <input id="filter-hard" name="filter-level" type="radio" value="hard" checked />
+          <span>
+            <strong>Nur hartes Gendern</strong><br />
+            Standard: Blendet zum Beispiel Formen mit Stern, Doppelpunkt oder Binnen-I aus.
+          </span>
+        </label>
+        <label class="setting-row" for="filter-hard-light">
+          <input id="filter-hard-light" name="filter-level" type="radio" value="hard-light" />
+          <span>
+            <strong>Hartes und leichtes Gendern</strong><br />
+            Blendet zusätzlich zum Beispiel „Studierende“ und vergleichbare Ersatzformen aus.
+          </span>
+        </label>
+      </fieldset>
+      <p>
+        Die Auswahl wirkt sofort auf geöffnete Suchseiten. Hart geprüfte Domains werden immer
+        gefiltert; leichtes Gendern wird nur mit der zweiten Auswahl zusätzlich gefiltert.
+      </p>
+      <p id="filter-status" class="status-line" role="status" aria-live="polite"></p>
       <h2>Freiwillige Statistik</h2>
       <label class="setting-row" for="share-statistics">
         <input id="share-statistics" type="checkbox" />
@@ -35,7 +58,7 @@
       <p id="settings-status" class="status-line" role="status" aria-live="polite"></p>
       <h2>Feste Regeln</h2>
       <ul>
-        <li>Gesperrte Domains werden in Suchergebnissen ausgeblendet.</li>
+        <li>Hard wird standardmäßig ausgeblendet; Light kann zusätzlich aktiviert werden.</li>
         <li>Geprüfte Domains und Ausnahmen erhalten einen grünen Stern.</li>
         <li>Noch nicht geprüfte Domains erhalten einen grauen Stern.</li>
       </ul>

@@ -41,6 +41,21 @@ header {
   color: #747b77;
 }
 
+.logo.update {
+  animation: update-color 6s ease-in-out infinite alternate;
+  color: #b42318;
+}
+
+.logo.cooldown {
+  color: #c66a00;
+}
+
+@keyframes update-color {
+  to {
+    color: #e43b2f;
+  }
+}
+
 h1,
 h2,
 p {
@@ -109,6 +124,85 @@ h2 {
 .status-card button:disabled {
   cursor: wait;
   opacity: 0.65;
+}
+
+.cooldown-card {
+  background: #fff7e8;
+  border: 1px solid #edbd72;
+  border-radius: 10px;
+  color: #7a4300;
+  margin-bottom: 14px;
+  padding: 11px;
+}
+
+.cooldown-card[hidden] {
+  display: none;
+}
+
+.cooldown-card h2 {
+  color: #9a5200;
+  margin-bottom: 5px;
+}
+
+.cooldown-card p {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.update-card {
+  background: #fff4f2;
+  border: 1px solid #efb6af;
+  border-radius: 10px;
+  color: #79231c;
+  margin-bottom: 14px;
+  padding: 11px;
+}
+
+.update-card[hidden] {
+  display: none;
+}
+
+.update-card h2 {
+  color: #9b2c22;
+  margin-bottom: 5px;
+}
+
+.update-card p {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.update-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-top: 9px;
+}
+
+.update-actions button {
+  background: #b42318;
+  border: 0;
+  border-radius: 7px;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  padding: 7px 9px;
+}
+
+.update-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+#update-feedback {
+  margin-top: 7px;
+  min-height: 0;
+}
+
+#update-feedback:empty {
+  display: none;
 }
 
 #current-domain {
@@ -192,6 +286,12 @@ nav a:hover {
   background: #e8eeea;
 }
 
+.update-actions a {
+  color: #79231c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .beta-tests {
   display: grid;
   gap: 7px;
@@ -231,6 +331,12 @@ nav a:hover {
   background: #b12929;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .logo.update {
+    animation: none;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   body {
     background: #17211b;
@@ -250,6 +356,20 @@ nav a:hover {
 
   .status-card button {
     color: #75d996;
+  }
+
+  .update-card {
+    background: #3b2527;
+    border-color: #704045;
+    color: #f1c0bd;
+  }
+
+  .update-card h2 {
+    color: #ffb4ad;
+  }
+
+  .update-actions a {
+    color: #ffb4ad;
   }
 
   .report-option {

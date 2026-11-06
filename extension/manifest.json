@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Genderfreies Internet",
-  "version": "0.4.4",
+  "version": "0.8.3",
   "description": "Blendet Webseiten mit Gendersprache aus Suchergebnissen aus. Ein Stern zeigt geprüfte und noch unbekannte Domains.",
   "icons": {
     "16": "gf-icon-16.png",
@@ -11,6 +11,7 @@
   },
   "permissions": [
     "storage",
+    "unlimitedStorage",
     "alarms",
     "activeTab"
   ],
@@ -22,7 +23,7 @@
     "https://search.brave.com/*",
     "https://duckduckgo.com/*",
     "https://html.duckduckgo.com/*",
-    "http://0.0.0.0:18080/*"
+    "https://lauraklaertdas.de/*"
   ],
   "background": {
     "service_worker": "background.js",

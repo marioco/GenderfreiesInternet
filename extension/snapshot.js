@@ -1,9 +1,12 @@
 "use strict";
 
 const VALID_STATES = new Set(["blocked", "verified", "exception", null]);
+const VALID_FILTER_CATEGORIES = new Set(["hard", "light"]);
 const DOMAIN_PATTERN =
   /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const KEY_ID_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
+const MAX_PROOF_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 
 export class SnapshotError extends Error {}
 
@@ -46,10 +49,7 @@ function exactKeys(value, expected) {
   );
 }
 
-export async function verifyEnvelope(envelope, publicKeys, now = new Date()) {
-  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
-    throw new SnapshotError("Vergleichszeit ist ungültig");
-  }
+export async function verifySignedPayload(envelope, publicKeys) {
   if (!exactKeys(envelope, ["algorithm", "key_id", "payload", "signature"])) {
     throw new SnapshotError("Signaturhülle besitzt ein ungültiges Schema");
   }
@@ -65,6 +65,36 @@ export async function verifyEnvelope(envelope, publicKeys, now = new Date()) {
     throw new SnapshotError("Unbekannter Signaturschlüssel");
   }
   const payload = envelope.payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new SnapshotError("Signaturnutzlast fehlt");
+  }
+  const keyBytes = base64urlBytes(encodedKey);
+  const signatureBytes = base64urlBytes(envelope.signature);
+  if (keyBytes.length !== 32 || signatureBytes.length !== 64) {
+    throw new SnapshotError("Signaturschlüssel oder Signatur besitzt eine ungültige Länge");
+  }
+  let valid;
+  try {
+    const key = await crypto.subtle.importKey("raw", keyBytes, { name: "Ed25519" }, false, ["verify"]);
+    valid = await crypto.subtle.verify(
+      { name: "Ed25519" },
+      key,
+      signatureBytes,
+      new TextEncoder().encode(canonical(payload)),
+    );
+  } catch (error) {
+    if (error instanceof SnapshotError) throw error;
+    throw new SnapshotError("Signatur konnte nicht geprüft werden", { cause: error });
+  }
+  if (!valid) throw new SnapshotError("Signatur ist ungültig");
+  return payload;
+}
+
+export async function verifyEnvelope(envelope, publicKeys, now = new Date()) {
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
+    throw new SnapshotError("Vergleichszeit ist ungültig");
+  }
+  const payload = await verifySignedPayload(envelope, publicKeys);
   if (
     !exactKeys(payload, [
       "base_version",
@@ -78,7 +108,7 @@ export async function verifyEnvelope(envelope, publicKeys, now = new Date()) {
     throw new SnapshotError("Signaturnutzlast besitzt ein ungültiges Schema");
   }
   if (
-    payload.schema_version !== 1 ||
+    ![1, 2].includes(payload.schema_version) ||
     !Number.isSafeInteger(payload.version) ||
     payload.version < 0 ||
     !Number.isSafeInteger(payload.base_version) ||
@@ -103,33 +133,22 @@ export async function verifyEnvelope(envelope, publicKeys, now = new Date()) {
   ) {
     throw new SnapshotError("Signaturnutzlast ist abgelaufen oder aus der Zukunft");
   }
-  const keyBytes = base64urlBytes(encodedKey);
-  const signatureBytes = base64urlBytes(envelope.signature);
-  if (keyBytes.length !== 32 || signatureBytes.length !== 64) {
-    throw new SnapshotError("Signaturschlüssel oder Signatur besitzt eine ungültige Länge");
-  }
-  let valid;
-  try {
-    const key = await crypto.subtle.importKey("raw", keyBytes, { name: "Ed25519" }, false, ["verify"]);
-    valid = await crypto.subtle.verify(
-      { name: "Ed25519" },
-      key,
-      signatureBytes,
-      new TextEncoder().encode(canonical(payload)),
-    );
-  } catch (error) {
-    if (error instanceof SnapshotError) throw error;
-    throw new SnapshotError("Signatur konnte nicht geprüft werden", { cause: error });
-  }
-  if (!valid) throw new SnapshotError("Signatur ist ungültig");
   const seen = new Set();
+  const changeKeys =
+    payload.schema_version === 2
+      ? ["domain", "expires_at", "filter_category", "state", "version"]
+      : ["domain", "expires_at", "state", "version"];
   for (const change of payload.changes) {
+    const filterCategory =
+      payload.schema_version === 2 ? change.filter_category : change.state === "blocked" ? "hard" : null;
     if (
-      !exactKeys(change, ["domain", "expires_at", "state", "version"]) ||
+      !exactKeys(change, changeKeys) ||
       typeof change.domain !== "string" ||
       !DOMAIN_PATTERN.test(change.domain) ||
       seen.has(change.domain) ||
       !VALID_STATES.has(change.state) ||
+      (change.state === "blocked" && !VALID_FILTER_CATEGORIES.has(filterCategory)) ||
+      (change.state !== "blocked" && filterCategory !== null) ||
       !Number.isSafeInteger(change.version) ||
       change.version < 0 ||
       change.version > payload.version ||
@@ -147,18 +166,21 @@ export async function verifyEnvelope(envelope, publicKeys, now = new Date()) {
 }
 
 export function sanitizeCache(cache, now = new Date(), maximumEntries = 10000) {
-  if (!Number.isSafeInteger(maximumEntries) || maximumEntries < 1 || maximumEntries > 10000) {
+  if (!Number.isSafeInteger(maximumEntries) || maximumEntries < 1 || maximumEntries > 100000) {
     throw new SnapshotError("Cachegrenze ist ungültig");
   }
   const candidates = [];
   const rawEntries = cache?.entries;
   if (rawEntries && typeof rawEntries === "object" && !Array.isArray(rawEntries)) {
     for (const [domain, entry] of Object.entries(rawEntries)) {
+      const filterCategory = entry?.filterCategory ?? (entry?.state === "blocked" ? "hard" : null);
       if (
         !DOMAIN_PATTERN.test(domain) ||
         !entry ||
         typeof entry !== "object" ||
         !VALID_STATES.has(entry.state) ||
+        (entry.state === "blocked" && !VALID_FILTER_CATEGORIES.has(filterCategory)) ||
+        (entry.state !== "blocked" && filterCategory !== null) ||
         !Number.isSafeInteger(entry.stateVersion) ||
         entry.stateVersion < 0 ||
         !Number.isSafeInteger(entry.proofVersion) ||
@@ -176,6 +198,7 @@ export function sanitizeCache(cache, now = new Date(), maximumEntries = 10000) {
         domain,
         {
           state: entry.state,
+          filterCategory,
           stateVersion: entry.stateVersion,
           proofVersion: entry.proofVersion,
           expiresAt: entry.expiresAt,
@@ -193,10 +216,45 @@ export function sanitizeCache(cache, now = new Date(), maximumEntries = 10000) {
     (current, [_domain, entry]) => Math.max(current, entry.proofVersion),
     0,
   );
-  return { entries, latestProofVersion: highestProof };
+  const rawProofVersion = cache?.latestProofVersion;
+  const rawProofExpiresAt = cache?.latestProofExpiresAt;
+  const rawProofVerifiedAt = cache?.latestProofVerifiedAt;
+  const proofExpires = Date.parse(rawProofExpiresAt);
+  const proofVerified = Date.parse(rawProofVerifiedAt);
+  const validWatermark =
+    Number.isSafeInteger(rawProofVersion) &&
+    rawProofVersion >= highestProof &&
+    typeof rawProofExpiresAt === "string" &&
+    Number.isFinite(proofExpires) &&
+    proofExpires > now.getTime() &&
+    typeof rawProofVerifiedAt === "string" &&
+    Number.isFinite(proofVerified) &&
+    proofVerified <= now.getTime() + MAX_CLOCK_SKEW_MS &&
+    proofExpires > proofVerified &&
+    proofExpires <= proofVerified + MAX_PROOF_LIFETIME_MS + MAX_CLOCK_SKEW_MS;
+  if (validWatermark) {
+    return {
+      entries,
+      latestProofVersion: rawProofVersion,
+      latestProofExpiresAt: rawProofExpiresAt,
+      latestProofVerifiedAt: rawProofVerifiedAt,
+    };
+  }
+  const newest = candidates
+    .filter(([_domain, entry]) => entry.proofVersion === highestProof)
+    .sort(
+      ([_leftDomain, left], [_rightDomain, right]) =>
+        Date.parse(right.expiresAt) - Date.parse(left.expiresAt),
+    )[0];
+  return {
+    entries,
+    latestProofVersion: highestProof,
+    latestProofExpiresAt: newest?.[1].expiresAt || null,
+    latestProofVerifiedAt: newest?.[1].verifiedAt || null,
+  };
 }
 
-export function applyProofs(cache, payload, now = new Date()) {
+export function applyProofs(cache, payload, now = new Date(), maximumEntries = 10000) {
   if (payload.version < (cache.latestProofVersion || 0)) return cache;
   const entries = { ...(cache.entries || {}) };
   const proofExpiresAt = payload.expires_at;
@@ -216,6 +274,7 @@ export function applyProofs(cache, payload, now = new Date()) {
     }
     entries[change.domain] = {
       state: change.state,
+      filterCategory: change.filter_category ?? (change.state === "blocked" ? "hard" : null),
       stateVersion: change.version,
       proofVersion: payload.version,
       expiresAt,
@@ -223,8 +282,14 @@ export function applyProofs(cache, payload, now = new Date()) {
     };
   }
   return sanitizeCache(
-    { entries, latestProofVersion: Math.max(cache.latestProofVersion || 0, payload.version) },
+    {
+      entries,
+      latestProofVersion: Math.max(cache.latestProofVersion || 0, payload.version),
+      latestProofExpiresAt: payload.expires_at,
+      latestProofVerifiedAt: now.toISOString(),
+    },
     now,
+    maximumEntries,
   );
 }
 
@@ -233,7 +298,8 @@ export function lookupCached(hostname, cache, now = new Date()) {
     .toLowerCase()
     .replace(/\.$/, "")
     .replace(/^www\./, "");
-  if (!DOMAIN_PATTERN.test(host)) return { domain: host, state: null, known: false, cached: false };
+  if (!DOMAIN_PATTERN.test(host))
+    return { domain: host, state: null, filterCategory: null, known: false, cached: false };
   const labels = host.split(".");
   for (let index = 0; index < labels.length - 1; index += 1) {
     const candidate = labels.slice(index).join(".");
@@ -243,9 +309,10 @@ export function lookupCached(hostname, cache, now = new Date()) {
     return {
       domain: candidate,
       state: entry.state,
+      filterCategory: entry.filterCategory,
       known: entry.state !== null,
       cached: true,
     };
   }
-  return { domain: host, state: null, known: false, cached: false };
+  return { domain: host, state: null, filterCategory: null, known: false, cached: false };
 }

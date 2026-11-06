@@ -46,6 +46,23 @@ li {
   padding: 16px;
 }
 
+.setting-group {
+  border: 0;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.visually-hidden {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+  clip-path: inset(50%);
+}
+
 .setting-row {
   align-items: flex-start;
   background: white;
@@ -73,6 +90,49 @@ li {
   color: #a11b1b;
 }
 
+.onboarding-steps {
+  margin: 16px 0;
+  padding-left: 24px;
+}
+
+.onboarding-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.onboarding-actions button {
+  background: #146330;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  padding: 10px 14px;
+}
+
+.onboarding-actions button:hover:not(:disabled) {
+  background: #0e4b24;
+}
+
+.onboarding-actions button.secondary {
+  background: transparent;
+  border: 1px solid #7b8b81;
+  color: #17211b;
+}
+
+.onboarding-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.pin-success {
+  color: #146330;
+}
+
 .star-green {
   color: #16853b;
 }
@@ -82,7 +142,9 @@ li {
 }
 
 .gf-online,
-.gf-offline {
+.gf-offline,
+.gf-update,
+.gf-cooldown {
   display: inline-block;
   font-weight: 900;
   min-width: 24px;
@@ -94,6 +156,49 @@ li {
 
 .gf-offline {
   color: #747b77;
+}
+
+.gf-update {
+  color: #b42318;
+  min-width: 38px;
+}
+
+.gf-cooldown {
+  color: #c66a00;
+  min-width: 38px;
+}
+
+.support-card {
+  background: #eef8f1;
+  border: 1px solid #b9dcc4;
+  border-radius: 12px;
+  margin-top: 30px;
+  padding: 18px;
+}
+
+.support-card h2 {
+  margin-top: 0;
+}
+
+.support-links {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.donate-button {
+  background: #146330;
+  border-radius: 8px;
+  color: white;
+  font-weight: 750;
+  padding: 9px 12px;
+  text-decoration: none;
+}
+
+.donate-button:hover {
+  background: #0e4b24;
 }
 
 .page-links {
@@ -127,6 +232,20 @@ a {
   .setting-row {
     background: #202d25;
     border-color: #3c4a41;
+  }
+
+  .support-card {
+    background: #20352a;
+    border-color: #41654e;
+  }
+
+  .donate-button {
+    color: white;
+  }
+
+  .onboarding-actions button.secondary {
+    border-color: #8ba095;
+    color: #eef4f0;
   }
 
   a {
