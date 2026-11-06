@@ -50,6 +50,23 @@ let currentOnline = false;
 let currentUpdate = null;
 let currentCooldown = null;
 let updatePulsePhase = 0;
+
+function isReportableDomain(value) {
+  if (typeof value !== "string") return false;
+  const hostname = value.toLowerCase().replace(/\.$/, "");
+  if (!DOMAIN_PATTERN.test(hostname)) return false;
+  if (
+    hostname === "news.google.com" ||
+    hostname === "search.brave.com" ||
+    hostname === "bing.com" ||
+    hostname.endsWith(".bing.com") ||
+    hostname === "duckduckgo.com" ||
+    hostname.endsWith(".duckduckgo.com")
+  )
+    return false;
+  return !/^(?:www\.)?google\.[a-z0-9-]+(?:\.[a-z0-9-]+)*$/.test(hostname);
+}
+
 function parseVersion(value) {
   if (typeof value !== "string" || !VERSION_PATTERN.test(value)) return null;
   const parts = value.split(".").map(Number);
@@ -654,6 +671,9 @@ async function lookup(hostnames) {
 }
 
 async function report(domain, category) {
+  if (!isReportableDomain(domain) || !["hard", "light"].includes(category)) {
+    throw new Error("Diese Seite kann nicht gemeldet werden");
+  }
   await loadStoredCooldown();
   const activeCooldown = cooldownStatus();
   if (activeCooldown) {

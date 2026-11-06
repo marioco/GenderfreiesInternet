@@ -60,10 +60,24 @@ function domainFromTab(tab) {
   try {
     const url = new URL(tab.url);
     if (!["http:", "https:"].includes(url.protocol) || !url.hostname) return null;
-    return url.hostname.toLowerCase().replace(/\.$/, "");
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+    return isSearchEngineDomain(hostname) ? null : hostname;
   } catch {
     return null;
   }
+}
+
+function isSearchEngineDomain(hostname) {
+  if (
+    hostname === "news.google.com" ||
+    hostname === "search.brave.com" ||
+    hostname === "bing.com" ||
+    hostname.endsWith(".bing.com") ||
+    hostname === "duckduckgo.com" ||
+    hostname.endsWith(".duckduckgo.com")
+  )
+    return true;
+  return /^(?:www\.)?google\.[a-z0-9-]+(?:\.[a-z0-9-]+)*$/.test(hostname);
 }
 
 function enableReportButtons(enabled) {

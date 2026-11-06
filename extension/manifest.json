@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Genderfreies Internet",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "Blendet Webseiten mit Gendersprache aus Suchergebnissen aus. Ein Stern zeigt geprüfte und noch unbekannte Domains.",
   "icons": {
     "16": "gf-icon-16.png",

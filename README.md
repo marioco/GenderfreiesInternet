@@ -4,7 +4,7 @@
 
 Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google News, Bing, Brave Search und DuckDuckGo aus. Ein grüner Stern kennzeichnet positiv geprüfte Domains, ein grauer Stern noch nicht geprüfte Domains.
 
-- **Aktuelle Beta-Version:** 0.8.3
+- **Aktuelle Beta-Version:** 0.8.4
 - **Browser:** Google Chrome und Brave
 
 ## Installation
@@ -25,6 +25,7 @@ Erweiterungsseite neu laden.
 - positiv geprüfte Domains mit einem grünen Stern markieren
 - unbekannte Domains mit einem grauen Stern markieren
 - eine aktuell geöffnete Website zur Prüfung melden
+- Suchmaschinen und Google News selbst von Meldungen ausschließen
 - hartes Gendern standardmäßig und leichtes Gendern auf Wunsch ausblenden
 - Domain-Ausnahmen berücksichtigen
 - den signierten Datenbestand und zwischenzeitliche Änderungen automatisch aktualisieren
@@ -41,7 +42,7 @@ Erweiterungsseite neu laden.
 
 ## Datenstand und Serververbindung
 
-Version 0.8.3 verwendet den produktiven Filterdienst auf
+Version 0.8.4 verwendet den produktiven Filterdienst auf
 [`lauraklaertdas.de`](https://lauraklaertdas.de/genderfrei/). Der Browser lädt einen
 signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden
 Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und
