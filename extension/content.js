@@ -22,6 +22,8 @@
   ]);
   const RETRY_DELAYS_MS = [250, 1000, 5000];
   const FILTER_LIGHT_KEY = "blockLightGenderingV1";
+  const PREDEFINED_EXCEPTIONS_KEY = "predefinedDomainExceptionsV1";
+  const CUSTOM_EXCEPTIONS_KEY = "customDomainExceptionsV1";
   const GOOGLE_NEWS_RESOLVE_CONCURRENCY = 2;
   const GOOGLE_NEWS_RSS_MAX_CHARS = 2_000_000;
   const GOOGLE_NEWS_ARTICLE_MAX_CHARS = 3_000_000;
@@ -570,7 +572,13 @@
   if (engine()) {
     scheduleScan();
     chrome.storage?.onChanged?.addListener((changes, areaName) => {
-      if (areaName !== "local" || !Object.hasOwn(changes, FILTER_LIGHT_KEY)) return;
+      if (
+        areaName !== "local" ||
+        ![FILTER_LIGHT_KEY, PREDEFINED_EXCEPTIONS_KEY, CUSTOM_EXCEPTIONS_KEY].some((key) =>
+          Object.hasOwn(changes, key),
+        )
+      )
+        return;
       processed = new WeakMap();
       failedLookups = new WeakMap();
       googleNewsIdsByRoot = new WeakMap();

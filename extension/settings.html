@@ -5,74 +5,150 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Genderfreies Internet – Einstellungen</title>
     <link rel="stylesheet" href="info-page.css" />
+    <link rel="stylesheet" href="settings.css" />
   </head>
   <body>
     <main>
       <p class="eyebrow">Genderfreies Internet</p>
       <h1>Einstellungen</h1>
-      <div class="notice">
-        <strong>Die zentrale Prüfung ist aktiv.</strong>
-        <p>
-          Diese Seite steuert, welche zentral geprüften Domainentscheidungen in deinen
-          Suchergebnissen ausgeblendet werden.
-        </p>
+      <div class="settings-tabs" role="tablist" aria-label="Einstellungsbereiche">
+        <button
+          id="tab-settings"
+          class="settings-tab"
+          type="button"
+          role="tab"
+          aria-controls="panel-settings"
+          aria-selected="true"
+          tabindex="0"
+        >Einstellungen</button>
+        <button
+          id="tab-predefined"
+          class="settings-tab"
+          type="button"
+          role="tab"
+          aria-controls="panel-predefined"
+          aria-selected="false"
+          tabindex="-1"
+        >Ausnahmen</button>
+        <button
+          id="tab-custom"
+          class="settings-tab"
+          type="button"
+          role="tab"
+          aria-controls="panel-custom"
+          aria-selected="false"
+          tabindex="-1"
+        >Eigene Ausnahmen</button>
       </div>
-      <h2>Filterstärke</h2>
-      <fieldset class="setting-group">
-        <legend class="visually-hidden">Gewünschte Filterstärke auswählen</legend>
-        <label class="setting-row" for="filter-hard">
-          <input id="filter-hard" name="filter-level" type="radio" value="hard" checked />
+
+      <section id="panel-settings" class="settings-panel" role="tabpanel" aria-labelledby="tab-settings">
+        <div class="notice">
+          <strong>Die zentrale Prüfung ist aktiv.</strong>
+          <p>
+            Diese Seite steuert, welche zentral geprüften Domainentscheidungen in deinen
+            Suchergebnissen ausgeblendet werden.
+          </p>
+        </div>
+        <h2>Filterstärke</h2>
+        <fieldset class="setting-group">
+          <legend class="visually-hidden">Gewünschte Filterstärke auswählen</legend>
+          <label class="setting-row" for="filter-hard">
+            <input id="filter-hard" name="filter-level" type="radio" value="hard" checked />
+            <span>
+              <strong>Nur hartes Gendern</strong><br />
+              Standard: Blendet zum Beispiel Formen mit Stern, Doppelpunkt oder Binnen-I aus.
+            </span>
+          </label>
+          <label class="setting-row" for="filter-hard-light">
+            <input id="filter-hard-light" name="filter-level" type="radio" value="hard-light" />
+            <span>
+              <strong>Hartes und leichtes Gendern</strong><br />
+              Blendet zusätzlich zum Beispiel „Studierende“ und vergleichbare Ersatzformen aus.
+            </span>
+          </label>
+        </fieldset>
+        <p>
+          Die Auswahl wirkt sofort auf geöffnete Suchseiten. Hart geprüfte Domains werden immer
+          gefiltert; leichtes Gendern wird nur mit der zweiten Auswahl zusätzlich gefiltert.
+        </p>
+        <p id="filter-status" class="status-line" role="status" aria-live="polite"></p>
+        <h2>Freiwillige Statistik</h2>
+        <label class="setting-row" for="share-statistics">
+          <input id="share-statistics" type="checkbox" />
           <span>
-            <strong>Nur hartes Gendern</strong><br />
-            Standard: Blendet zum Beispiel Formen mit Stern, Doppelpunkt oder Binnen-I aus.
+            <strong>Ausblendungsstatistik teilen</strong><br />
+            Hilft zu zählen, wie oft gesperrte Domains aus Suchergebnissen entfernt wurden.
           </span>
         </label>
-        <label class="setting-row" for="filter-hard-light">
-          <input id="filter-hard-light" name="filter-level" type="radio" value="hard-light" />
-          <span>
-            <strong>Hartes und leichtes Gendern</strong><br />
-            Blendet zusätzlich zum Beispiel „Studierende“ und vergleichbare Ersatzformen aus.
-          </span>
-        </label>
-      </fieldset>
-      <p>
-        Die Auswahl wirkt sofort auf geöffnete Suchseiten. Hart geprüfte Domains werden immer
-        gefiltert; leichtes Gendern wird nur mit der zweiten Auswahl zusätzlich gefiltert.
-      </p>
-      <p id="filter-status" class="status-line" role="status" aria-live="polite"></p>
-      <h2>Freiwillige Statistik</h2>
-      <label class="setting-row" for="share-statistics">
-        <input id="share-statistics" type="checkbox" />
-        <span>
-          <strong>Ausblendungsstatistik teilen</strong><br />
-          Hilft zu zählen, wie oft gesperrte Domains aus Suchergebnissen entfernt wurden.
-        </span>
-      </label>
-      <p>
-        Diese Funktion ist standardmäßig ausgeschaltet. Bei Zustimmung werden nur Domain und
-        zusammengefasste Anzahl übertragen – keine Suchbegriffe, URL-Pfade, Suchmaschine,
-        Uhrzeit, Installationskennung oder Seiteninhalte. Noch nicht gesendete Zähler werden beim
-        Ausschalten gelöscht. Bereits übermittelte, nicht zuordenbare Summen können nicht
-        nachträglich einer Person zugeordnet oder einzeln gelöscht werden.
-      </p>
-      <p id="settings-status" class="status-line" role="status" aria-live="polite"></p>
-      <h2>Feste Regeln</h2>
-      <ul>
-        <li>Hard wird standardmäßig ausgeblendet; Light kann zusätzlich aktiviert werden.</li>
-        <li>Geprüfte Domains und Ausnahmen erhalten einen grünen Stern.</li>
-        <li>Noch nicht geprüfte Domains erhalten einen grauen Stern.</li>
-      </ul>
-      <h2>Erweiterung verwalten</h2>
-      <p>
-        Aktivieren, deaktivieren oder entfernen lässt sich GF in der Erweiterungsverwaltung des
-        Browsers: in Chrome unter <code>chrome://extensions</code>, in Brave unter
-        <code>brave://extensions</code>.
-      </p>
+        <p>
+          Diese Funktion ist standardmäßig ausgeschaltet. Bei Zustimmung werden nur Domain und
+          zusammengefasste Anzahl übertragen – keine Suchbegriffe, URL-Pfade, Suchmaschine,
+          Uhrzeit, Installationskennung oder Seiteninhalte. Noch nicht gesendete Zähler werden beim
+          Ausschalten gelöscht. Bereits übermittelte, nicht zuordenbare Summen können nicht
+          nachträglich einer Person zugeordnet oder einzeln gelöscht werden.
+        </p>
+        <p id="settings-status" class="status-line" role="status" aria-live="polite"></p>
+        <h2>Feste Regeln</h2>
+        <ul>
+          <li>Hard wird standardmäßig ausgeblendet; Light kann zusätzlich aktiviert werden.</li>
+          <li>Geprüfte Domains und Ausnahmen erhalten einen grünen Stern.</li>
+          <li>Noch nicht geprüfte Domains erhalten einen grauen Stern.</li>
+        </ul>
+        <h2>Erweiterung verwalten</h2>
+        <p>
+          Aktivieren, deaktivieren oder entfernen lässt sich GF in der Erweiterungsverwaltung des
+          Browsers: in Chrome unter <code>chrome://extensions</code>, in Brave unter
+          <code>brave://extensions</code>.
+        </p>
+      </section>
+
+      <section
+        id="panel-predefined"
+        class="settings-panel"
+        role="tabpanel"
+        aria-labelledby="tab-predefined"
+        hidden
+      >
+        <h2>Vordefinierte Ausnahmen</h2>
+        <p>
+          Aktivierte Dienste bleiben in Suchergebnissen sichtbar. Deaktivierte Dienste werden
+          blockiert. Wikipedia und Reddit sind standardmäßig deaktiviert.
+        </p>
+        <div id="predefined-exceptions" class="exception-list"></div>
+        <p id="predefined-status" class="status-line" role="status" aria-live="polite"></p>
+      </section>
+
+      <section
+        id="panel-custom"
+        class="settings-panel"
+        role="tabpanel"
+        aria-labelledby="tab-custom"
+        hidden
+      >
+        <h2>Eigene Ausnahmen</h2>
+        <p>
+          Trage ausschließlich den Domainnamen ein. Pro Eintrag gilt die Ausnahme automatisch
+          auch für alle Unterdomains.
+        </p>
+        <fieldset class="domain-examples">
+          <legend class="visually-hidden">Beispiele für gültige Domainnamen</legend>
+          <span class="domain-example invalid"><s>http://beispiel.de</s><b role="img" aria-label="ungültig">✕</b></span>
+          <span class="domain-example invalid"><s>www.beispiel.de</s><b role="img" aria-label="ungültig">✕</b></span>
+          <span class="domain-example valid">beispiel.de<b role="img" aria-label="gültig">✓</b></span>
+        </fieldset>
+        <form id="custom-exceptions-form" novalidate>
+          <div id="custom-exceptions" class="custom-exception-list"></div>
+          <button class="save-button" type="submit">Eigene Ausnahmen speichern</button>
+        </form>
+        <p id="custom-status" class="status-line" role="status" aria-live="polite"></p>
+      </section>
+
       <p class="page-links">
         <a href="help.html">Hilfe öffnen</a>
         <a href="testplan.html">Vollständigen Betatest öffnen</a>
       </p>
     </main>
+    <script src="exceptions.js"></script>
     <script src="settings.js"></script>
   </body>
 </html>

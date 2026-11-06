@@ -1,0 +1,250 @@
+.settings-tabs {
+  border-bottom: 1px solid #c9d5cd;
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.settings-tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: #4d5c53;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
+.settings-tab:hover {
+  color: #146330;
+}
+
+.settings-tab[aria-selected="true"] {
+  border-bottom-color: #16853b;
+  color: #105f2d;
+}
+
+.settings-tab:focus-visible,
+.save-button:focus-visible,
+.predefined-exception-row input:focus-visible,
+.custom-exception-row input:focus-visible {
+  outline: 3px solid #79c993;
+  outline-offset: 2px;
+}
+
+.settings-panel[hidden] {
+  display: none;
+}
+
+.settings-panel > h2:first-child {
+  margin-top: 0;
+}
+
+.exception-list,
+.custom-exception-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.predefined-exception-row {
+  align-items: center;
+  background: white;
+  border: 1px solid #dfe6e1;
+  border-radius: 10px;
+  cursor: pointer;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto 1fr auto;
+  padding: 12px 14px;
+}
+
+.predefined-exception-row input {
+  height: 20px;
+  margin: 0;
+  width: 20px;
+}
+
+.exception-description {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.exception-description small {
+  color: #637168;
+  overflow-wrap: anywhere;
+}
+
+.exception-state {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 4px 8px;
+}
+
+.exception-state.is-exception {
+  background: #e6f5eb;
+  color: #146330;
+}
+
+.exception-state.is-blocked {
+  background: #fdecea;
+  color: #a12727;
+}
+
+.domain-examples {
+  background: white;
+  border: 1px solid #dfe6e1;
+  border-radius: 10px;
+  display: grid;
+  gap: 7px;
+  margin: 16px 0;
+  padding: 14px;
+}
+
+.domain-example {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.domain-example.invalid {
+  color: #a12727;
+}
+
+.domain-example.valid {
+  color: #146330;
+}
+
+.domain-example b {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.custom-exception-row {
+  align-items: center;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 28px 1fr 24px;
+}
+
+.custom-exception-number {
+  color: #637168;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.custom-exception-row input {
+  background: white;
+  border: 1px solid #b9c7bd;
+  border-radius: 8px;
+  color: #17211b;
+  font: inherit;
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.custom-exception-row input[aria-invalid="true"] {
+  border-color: #c53a32;
+}
+
+.custom-exception-row input[aria-invalid="false"] {
+  border-color: #16853b;
+}
+
+.domain-validation {
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+}
+
+.domain-validation.valid {
+  color: #16853b;
+}
+
+.domain-validation.invalid {
+  color: #c22d24;
+}
+
+.save-button {
+  background: #146330;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 750;
+  margin-top: 16px;
+  padding: 10px 14px;
+}
+
+.save-button:hover:not(:disabled) {
+  background: #0e4b24;
+}
+
+.save-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+@media (max-width: 520px) {
+  .settings-tab {
+    padding-inline: 10px;
+  }
+
+  .predefined-exception-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .exception-state {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .settings-tabs {
+    border-bottom-color: #3c4a41;
+  }
+
+  .settings-tab {
+    color: #b5c0b8;
+  }
+
+  .settings-tab:hover,
+  .settings-tab[aria-selected="true"] {
+    color: #75d996;
+  }
+
+  .predefined-exception-row,
+  .domain-examples {
+    background: #202d25;
+    border-color: #3c4a41;
+  }
+
+  .exception-description small,
+  .custom-exception-number {
+    color: #b5c0b8;
+  }
+
+  .exception-state.is-exception {
+    background: #294635;
+    color: #8fe0a9;
+  }
+
+  .exception-state.is-blocked {
+    background: #492b29;
+    color: #ffaaa2;
+  }
+
+  .custom-exception-row input {
+    background: #202d25;
+    border-color: #536158;
+    color: #eef4f0;
+  }
+}

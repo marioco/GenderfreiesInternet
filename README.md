@@ -4,7 +4,7 @@
 
 Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google News, Bing, Brave Search und DuckDuckGo aus. Ein grüner Stern kennzeichnet positiv geprüfte Domains, ein grauer Stern noch nicht geprüfte Domains.
 
-- **Aktuelle Beta-Version:** 0.8.4
+- **Aktuelle Beta-Version:** 0.8.5
 - **Browser:** Google Chrome und Brave
 
 ## Installation
@@ -16,9 +16,9 @@ Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google N
 5. **Entpackte Erweiterung laden** wählen.
 6. Den entpackten Ordner `suchfilter-beta` auswählen.
 
-Nach einer Aktualisierung das neue ZIP entpacken, die Dateien im bisher geladenen
-Erweiterungsordner vollständig ersetzen und die Erweiterung anschließend auf der
-Erweiterungsseite neu laden.
+Bei dieser entpackten Testversion muss ein neues ZIP weiterhin manuell entpackt werden.
+Installationen aus dem Chrome Web Store werden von Chrome und Brave dagegen automatisch im
+Hintergrund aktualisiert.
 
 ## Was die Erweiterung kann
 
@@ -27,9 +27,9 @@ Erweiterungsseite neu laden.
 - eine aktuell geöffnete Website zur Prüfung melden
 - Suchmaschinen und Google News selbst von Meldungen ausschließen
 - hartes Gendern standardmäßig und leichtes Gendern auf Wunsch ausblenden
-- Domain-Ausnahmen berücksichtigen
+- 20 vordefinierte und bis zu 20 eigene Domain-Ausnahmen verwalten
 - den signierten Datenbestand und zwischenzeitliche Änderungen automatisch aktualisieren
-- Updatehinweise und zeitweilige Meldesperren sichtbar am GF-Symbol anzeigen
+- zeitweilige Meldesperren sichtbar am orangefarbenen GF-Symbol anzeigen
 - Hilfe, Einstellungen und einen eingebauten Testplan anzeigen
 
 ## Unterstützte Suchmaschinen
@@ -42,7 +42,7 @@ Erweiterungsseite neu laden.
 
 ## Datenstand und Serververbindung
 
-Version 0.8.4 verwendet den produktiven Filterdienst auf
+Version 0.8.5 verwendet den produktiven Filterdienst auf
 [`lauraklaertdas.de`](https://lauraklaertdas.de/genderfrei/). Der Browser lädt einen
 signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden
 Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und

@@ -20,7 +20,7 @@ function renderStatus(status) {
   dot.className = `status-dot ${status.online ? "online" : "offline"}`;
   cooldownActive = Boolean(status.cooldown);
   document.querySelector(".logo").className = `logo ${
-    status.update ? "update" : cooldownActive ? "cooldown" : status.online ? "online" : "offline"
+    cooldownActive ? "cooldown" : status.online ? "online" : "offline"
   }`;
   document.querySelector("#status-title").textContent = status.online
     ? "Filterdienst ist bereit"
@@ -34,16 +34,6 @@ function renderStatus(status) {
     ? `Noch ${status.cooldown.label}. Danach sind Meldungen wieder möglich.`
     : "";
   enableReportButtons(currentDomain !== null);
-  const updateCard = document.querySelector("#update-card");
-  updateCard.hidden = !status.update;
-  if (status.update) {
-    document.querySelector("#update-detail").textContent =
-      `Installiert: ${status.update.currentVersion}. Verfügbar: ${status.update.latestVersion}. ` +
-      "Der Browser prüft zuerst den Shop. Ist dort kein Update verfügbar, wird die aktuelle ZIP geöffnet.";
-  } else {
-    document.querySelector("#update-detail").textContent = "";
-    document.querySelector("#update-feedback").textContent = "";
-  }
 }
 
 function activeTab() {
@@ -155,34 +145,10 @@ async function updateStatus(interactive = false) {
   }
 }
 
-async function requestUpdate() {
-  const button = document.querySelector("#request-update");
-  const feedback = document.querySelector("#update-feedback");
-  button.disabled = true;
-  feedback.className = "pending";
-  feedback.textContent = "Browser-Update wird geprüft …";
-  try {
-    const result = await message({ type: "request-update" });
-    feedback.className = "success";
-    feedback.textContent =
-      result.browserStatus === "update_available"
-        ? "Update gefunden. Die Erweiterung wird neu geladen."
-        : result.manualDownloadOpened
-          ? "ZIP geöffnet. Dateien im bisher geladenen Ordner ersetzen und erst danach neu laden."
-          : "Shop-Prüfung beendet. Bitte die Anleitung für die manuelle Aktualisierung öffnen.";
-  } catch {
-    feedback.className = "error";
-    feedback.textContent = "Automatische Shop-Prüfung nicht möglich. Bitte die Anleitung öffnen.";
-  } finally {
-    button.disabled = false;
-  }
-}
-
 for (const button of document.querySelectorAll(".report-option")) {
   button.addEventListener("click", () => submitReport(button.dataset.category));
 }
 document.querySelector("#retry").addEventListener("click", () => updateStatus(true));
-document.querySelector("#request-update").addEventListener("click", requestUpdate);
 document.querySelector("#open-settings").addEventListener("click", (event) => {
   event.preventDefault();
   chrome.runtime.openOptionsPage();

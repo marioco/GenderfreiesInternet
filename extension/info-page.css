@@ -143,7 +143,6 @@ li {
 
 .gf-online,
 .gf-offline,
-.gf-update,
 .gf-cooldown {
   display: inline-block;
   font-weight: 900;
@@ -156,11 +155,6 @@ li {
 
 .gf-offline {
   color: #747b77;
-}
-
-.gf-update {
-  color: #b42318;
-  min-width: 38px;
 }
 
 .gf-cooldown {
