@@ -25,8 +25,8 @@
   const PREDEFINED_EXCEPTIONS_KEY = "predefinedDomainExceptionsV1";
   const CUSTOM_EXCEPTIONS_KEY = "customDomainExceptionsV1";
   const GOOGLE_NEWS_RESOLVE_CONCURRENCY = 2;
-  const GOOGLE_NEWS_RSS_MAX_CHARS = 2_000_000;
-  const GOOGLE_NEWS_ARTICLE_MAX_CHARS = 3_000_000;
+  const GOOGLE_NEWS_RSS_MAX_BYTES = 2_000_000;
+  const GOOGLE_NEWS_ARTICLE_MAX_BYTES = 3_000_000;
   const GOOGLE_NEWS_FETCH_TIMEOUT_MS = 10_000;
   const GOOGLE_NEWS_FEED_CACHE_MS = 2 * 60 * 1000;
   const GOOGLE_NEWS_RESOLUTION_CACHE_MS = 10 * 60 * 1000;
@@ -208,7 +208,7 @@
     }
   }
 
-  async function fetchText(url, options, maxChars) {
+  async function fetchText(url, options, maxBytes) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), GOOGLE_NEWS_FETCH_TIMEOUT_MS);
     try {
@@ -219,7 +219,7 @@
         signal: controller.signal,
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const text = await responseText(response, maxChars);
+      const text = await responseText(response, maxBytes);
       return { response, text };
     } finally {
       clearTimeout(timeout);
@@ -246,7 +246,7 @@
     if (existing && Date.now() < existing.expiresAt) return existing.promise;
     const entry = {
       expiresAt: Date.now() + GOOGLE_NEWS_FEED_CACHE_MS,
-      promise: fetchText(feed, { credentials: "same-origin" }, GOOGLE_NEWS_RSS_MAX_CHARS)
+      promise: fetchText(feed, { credentials: "same-origin" }, GOOGLE_NEWS_RSS_MAX_BYTES)
         .then(({ text }) => googleNewsRssSources(text))
         .catch((error) => {
           console.warn("Suchfilter konnte Google-News-Quellenliste nicht laden:", error.message);
@@ -290,11 +290,13 @@
         // Längenangaben und unvollständige Zeilen gehören nicht zum JSON-Rahmen.
       }
     }
-    const pending = [...frames];
+    const pending = [...frames].slice(0, GOOGLE_NEWS_MAX_RPC_NODES);
+    let next = 0;
     let inspected = 0;
-    while (pending.length && inspected < GOOGLE_NEWS_MAX_RPC_NODES) {
+    while (next < pending.length && inspected < GOOGLE_NEWS_MAX_RPC_NODES) {
       inspected += 1;
-      const value = pending.shift();
+      const value = pending[next];
+      next += 1;
       if (!Array.isArray(value)) continue;
       if (value[0] === "wrb.fr" && value[1] === "Fbv4je" && typeof value[2] === "string") {
         try {
@@ -304,7 +306,9 @@
           return null;
         }
       }
-      pending.push(...value);
+      for (const child of value) {
+        if (Array.isArray(child) && pending.length < GOOGLE_NEWS_MAX_RPC_NODES) pending.push(child);
+      }
     }
     return null;
   }
@@ -324,7 +328,7 @@
       const { response, text } = await fetchText(
         article,
         { credentials: "same-origin" },
-        GOOGLE_NEWS_ARTICLE_MAX_CHARS,
+        GOOGLE_NEWS_ARTICLE_MAX_BYTES,
       );
       const redirected = externalUrl(response.url);
       if (redirected) return redirected;
@@ -363,7 +367,7 @@
         headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
         method: "POST",
       },
-      GOOGLE_NEWS_RSS_MAX_CHARS,
+      GOOGLE_NEWS_RSS_MAX_BYTES,
     );
     return googleNewsRpcUrl(text);
   }
@@ -646,7 +650,7 @@
       googleNewsIdsByRoot = new WeakMap();
       scheduleScan(0);
     });
-    new MutationObserver(scheduleScan).observe(document.documentElement, {
+    new MutationObserver(() => scheduleScan()).observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["href"],
       childList: true,

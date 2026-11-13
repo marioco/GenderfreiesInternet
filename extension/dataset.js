@@ -17,6 +17,7 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const FILE_PATTERN = /^(?:snapshot|delta)-[A-Za-z0-9._-]{1,160}\.json$/;
 const FETCH_TIMEOUT_MS = 15000;
 const MAX_CONCURRENT_FETCHES = 4;
+const MAX_CONCURRENT_SHARD_HASHES = 32;
 const MAX_DATA_FILE_BYTES = 32 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_DELTA_COUNT = 256;
@@ -227,10 +228,10 @@ async function fetchDataFile(baseUrl, descriptor, publicKeys, expectedBase, expe
     throw new SnapshotError("Datendatei gehört zu einem anderen Stand");
   }
   if (payload.changes.length !== descriptor.count) throw new SnapshotError("Datendateizähler stimmt nicht");
-  for (const change of payload.changes) {
+  await mapWithBoundedConcurrency(payload.changes, MAX_CONCURRENT_SHARD_HASHES, async (change) => {
     if ((await datasetShard(change.domain)) !== shard)
       throw new SnapshotError("Domain liegt im falschen Paket");
-  }
+  });
   return payload;
 }
 
@@ -337,7 +338,10 @@ async function fetchManifest(config) {
   return task.promise;
 }
 
-async function mapWithBoundedConcurrency(items, worker) {
+async function mapWithBoundedConcurrency(items, concurrency, worker) {
+  if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+    throw new SnapshotError("Parallelitätsgrenze ist ungültig");
+  }
   let nextIndex = 0;
   async function run() {
     while (nextIndex < items.length) {
@@ -346,7 +350,7 @@ async function mapWithBoundedConcurrency(items, worker) {
       await worker(items[index]);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(items.length, MAX_CONCURRENT_FETCHES) }, () => run()));
+  await Promise.all(Array.from({ length: Math.min(items.length, concurrency) }, () => run()));
 }
 
 export async function lookupDataset(hostnames, config) {
@@ -356,7 +360,7 @@ export async function lookupDataset(hostnames, config) {
   const shards = hostnames.length ? requested.shards : await activeShards([]);
   if (hostnames.length) await activeShards(shards);
   const wrappers = new Map();
-  await mapWithBoundedConcurrency(shards, async (shard) => {
+  await mapWithBoundedConcurrency(shards, MAX_CONCURRENT_FETCHES, async (shard) => {
     wrappers.set(shard, await updateShard(shard, manifest, config.datasetManifestUrl, config.publicKeys));
   });
   const entries = {};

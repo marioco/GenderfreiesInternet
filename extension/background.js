@@ -52,10 +52,10 @@ let renderedActionState = null;
 let currentOnline = false;
 let currentCooldown = null;
 
-function isReportableDomain(value) {
-  if (typeof value !== "string") return false;
+function normalizedReportableDomain(value) {
+  if (typeof value !== "string") return null;
   const hostname = value.toLowerCase().replace(/\.$/, "");
-  if (!DOMAIN_PATTERN.test(hostname) || /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname)) return false;
+  if (!DOMAIN_PATTERN.test(hostname) || /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname)) return null;
   if (
     hostname === "news.google.com" ||
     hostname === "search.brave.com" ||
@@ -64,8 +64,8 @@ function isReportableDomain(value) {
     hostname === "duckduckgo.com" ||
     hostname.endsWith(".duckduckgo.com")
   )
-    return false;
-  return !/^(?:www\.)?google\.[a-z0-9-]+(?:\.[a-z0-9-]+)*$/.test(hostname);
+    return null;
+  return /^(?:www\.)?google\.[a-z0-9-]+(?:\.[a-z0-9-]+)*$/.test(hostname) ? null : hostname;
 }
 
 async function fetchWithTimeout(url, options = {}, controller = new AbortController()) {
@@ -564,7 +564,8 @@ async function lookup(hostnames) {
 }
 
 async function report(domain, category) {
-  if (!isReportableDomain(domain) || !["hard", "light"].includes(category)) {
+  const hostname = normalizedReportableDomain(domain);
+  if (hostname === null || !["hard", "light"].includes(category)) {
     throw new Error("Diese Seite kann nicht gemeldet werden");
   }
   await loadStoredCooldown();
@@ -575,7 +576,7 @@ async function report(domain, category) {
   const response = await fetchWithTimeout(`${CONFIG.apiBaseUrl}/v1/reports`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ domain, category, installation_id: await installationId() }),
+    body: JSON.stringify({ domain: hostname, category, installation_id: await installationId() }),
     cache: "no-store",
     credentials: "omit",
     redirect: "error",
