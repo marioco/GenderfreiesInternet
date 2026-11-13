@@ -17,8 +17,11 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const FILE_PATTERN = /^(?:snapshot|delta)-[A-Za-z0-9._-]{1,160}\.json$/;
 const FETCH_TIMEOUT_MS = 15000;
 const MAX_CONCURRENT_FETCHES = 4;
+const DEFAULT_MANIFEST_CACHE_MS = 5 * 60 * 1000;
 const DOMAIN_PATTERN =
   /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+let manifestCache = null;
+let manifestTask = null;
 
 function exactKeys(value, expected) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -247,9 +250,45 @@ async function activeShards(requested) {
 }
 
 async function fetchManifest(config) {
-  const response = await fetchDatasetResource(config.datasetManifestUrl, "Datenmanifest");
-  if (!response.ok) throw new Error(`Datenmanifest fehlgeschlagen (${response.status})`);
-  return verifyDatasetManifest(await response.json(), config.publicKeys);
+  const now = Date.now();
+  const configuredMinutes = Number(config.syncIntervalMinutes);
+  const maxAge =
+    Number.isFinite(configuredMinutes) && configuredMinutes > 0
+      ? Math.min(configuredMinutes * 60 * 1000, DEFAULT_MANIFEST_CACHE_MS)
+      : DEFAULT_MANIFEST_CACHE_MS;
+  if (
+    manifestCache?.url === config.datasetManifestUrl &&
+    manifestCache.publicKeys === config.publicKeys &&
+    now < manifestCache.cachedAt + maxAge &&
+    now < manifestCache.expiresAt
+  ) {
+    return manifestCache.payload;
+  }
+  if (manifestTask?.url === config.datasetManifestUrl && manifestTask.publicKeys === config.publicKeys) {
+    return manifestTask.promise;
+  }
+  const task = {
+    url: config.datasetManifestUrl,
+    publicKeys: config.publicKeys,
+    promise: null,
+  };
+  task.promise = (async () => {
+    const response = await fetchDatasetResource(config.datasetManifestUrl, "Datenmanifest");
+    if (!response.ok) throw new Error(`Datenmanifest fehlgeschlagen (${response.status})`);
+    const payload = await verifyDatasetManifest(await response.json(), config.publicKeys);
+    manifestCache = {
+      cachedAt: Date.now(),
+      expiresAt: Date.parse(payload.expires_at),
+      payload,
+      publicKeys: config.publicKeys,
+      url: config.datasetManifestUrl,
+    };
+    return payload;
+  })().finally(() => {
+    if (manifestTask === task) manifestTask = null;
+  });
+  manifestTask = task;
+  return task.promise;
 }
 
 async function mapWithBoundedConcurrency(items, worker) {

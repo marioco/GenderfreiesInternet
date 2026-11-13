@@ -4,7 +4,7 @@
 
 Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google News, Bing, Brave Search und DuckDuckGo aus. Ein grüner Stern kennzeichnet positiv geprüfte Domains, ein grauer Stern noch nicht geprüfte Domains.
 
-- **Aktuelle Beta-Version:** 0.8.6
+- **Aktuelle Version:** 0.8.8
 - **Browser:** Google Chrome und Brave
 
 ## Installation
@@ -30,7 +30,7 @@ Hintergrund aktualisiert.
 - 20 vordefinierte und bis zu 20 eigene Domain-Ausnahmen verwalten
 - den signierten Datenbestand und zwischenzeitliche Änderungen automatisch aktualisieren
 - zeitweilige Meldesperren sichtbar am orangefarbenen GF-Symbol anzeigen
-- Hilfe, Einstellungen und einen eingebauten Testplan anzeigen
+- Hilfe, Einstellungen und die Datenschutzerklärung direkt erreichbar machen
 
 ## Unterstützte Suchmaschinen
 
@@ -42,7 +42,7 @@ Hintergrund aktualisiert.
 
 ## Datenstand und Serververbindung
 
-Version 0.8.6 verwendet den produktiven Filterdienst auf
+Version 0.8.8 verwendet den produktiven Filterdienst auf
 [`lauraklaertdas.de`](https://lauraklaertdas.de/genderfrei/). Der Browser lädt einen
 signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden
 Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und
@@ -50,7 +50,11 @@ KI-Prüfung sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
 
 ## Datenschutz
 
-Die Erweiterung übermittelt keine vollständigen Suchanfragen und keine besuchten URLs für die Statistik. Für Filterung, Meldungen und aggregierte Zählungen werden ausschließlich normalisierte Domainnamen und notwendige technische Angaben verarbeitet. Details zeigt die Hilfeseite innerhalb der Erweiterung.
+Domains sichtbarer Suchergebnisse werden für die Filterung lokal verarbeitet. Domainmeldungen
+werden nur nach ausdrücklichem Klick übertragen; die zusätzliche Ausblendungsstatistik ist
+standardmäßig ausgeschaltet. Suchbegriffe, vollständige URLs und Seiteninhalte werden nicht an
+den Betreiber übertragen. Einzelheiten stehen in der
+[Datenschutzerklärung](https://lauraklaertdas.de/genderfrei/datenschutz/).
 
 ## Quellcode des Plugins
 
