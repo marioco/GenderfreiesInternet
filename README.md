@@ -4,8 +4,8 @@
 
 Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google News, Bing, Brave Search und DuckDuckGo aus. Ein grüner Stern kennzeichnet positiv geprüfte Domains, ein grauer Stern noch nicht geprüfte Domains.
 
-- **Aktuelle Version:** 0.8.8
-- **Browser:** Google Chrome und Brave
+- **Aktuelle Version:** 1.0
+- **Browser:** Google Chrome und Brave auf Chromium 137 oder neuer
 
 ## Installation
 
@@ -14,9 +14,9 @@ Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google N
 3. In Chrome `chrome://extensions` oder in Brave `brave://extensions` öffnen.
 4. **Entwicklermodus** einschalten.
 5. **Entpackte Erweiterung laden** wählen.
-6. Den entpackten Ordner `suchfilter-beta` auswählen.
+6. Den entpackten Ordner `GenderfreiesInternet` auswählen.
 
-Bei dieser entpackten Testversion muss ein neues ZIP weiterhin manuell entpackt werden.
+Bei dieser direkt geladenen Version muss ein neues Programm-ZIP weiterhin manuell entpackt werden.
 Installationen aus dem Chrome Web Store werden von Chrome und Brave dagegen automatisch im
 Hintergrund aktualisiert.
 
@@ -42,7 +42,7 @@ Hintergrund aktualisiert.
 
 ## Datenstand und Serververbindung
 
-Version 0.8.8 verwendet den produktiven Filterdienst auf
+Version 1.0 verwendet den produktiven Filterdienst auf
 [`lauraklaertdas.de`](https://lauraklaertdas.de/genderfrei/). Der Browser lädt einen
 signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden
 Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und

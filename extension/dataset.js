@@ -17,7 +17,11 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const FILE_PATTERN = /^(?:snapshot|delta)-[A-Za-z0-9._-]{1,160}\.json$/;
 const FETCH_TIMEOUT_MS = 15000;
 const MAX_CONCURRENT_FETCHES = 4;
+const MAX_DATA_FILE_BYTES = 32 * 1024 * 1024;
+const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
+const MAX_DELTA_COUNT = 256;
 const DEFAULT_MANIFEST_CACHE_MS = 5 * 60 * 1000;
+const SHARD_COUNT_KEY_PREFIX = "signedDatasetShardCountV1:";
 const DOMAIN_PATTERN =
   /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 let manifestCache = null;
@@ -100,7 +104,7 @@ export async function verifyDatasetManifest(envelope, publicKeys, now = new Date
     throw new SnapshotError("Datenmanifest ist zeitlich ungültig");
   }
   validateFiles(payload.snapshots, { complete: true });
-  if (!Array.isArray(payload.deltas) || payload.deltas.length > 1000) {
+  if (!Array.isArray(payload.deltas) || payload.deltas.length > MAX_DELTA_COUNT) {
     throw new SnapshotError("Deltakette ist ungültig");
   }
   let expectedVersion = payload.snapshot_version;
@@ -140,9 +144,53 @@ function shardKey(shard) {
   return `${SHARD_KEY_PREFIX}${String(shard).padStart(2, "0")}`;
 }
 
-async function responseBytes(response, context) {
+function shardCountKey(shard) {
+  return `${SHARD_COUNT_KEY_PREFIX}${String(shard).padStart(2, "0")}`;
+}
+
+async function responseBytes(response, context, maximumBytes) {
   if (!response.ok) throw new Error(`${context} fehlgeschlagen (${response.status})`);
-  return new Uint8Array(await response.arrayBuffer());
+  const declaredLength = response.headers?.get?.("Content-Length");
+  if (declaredLength && /^[0-9]+$/.test(declaredLength) && Number(declaredLength) > maximumBytes) {
+    throw new SnapshotError(`${context} ist unerwartet groß`);
+  }
+  if (!response.body?.getReader) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > maximumBytes) throw new SnapshotError(`${context} ist unerwartet groß`);
+    return bytes;
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maximumBytes) {
+        await reader.cancel();
+        throw new SnapshotError(`${context} ist unerwartet groß`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result;
+}
+
+function parseJson(bytes, context) {
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch (error) {
+    throw new SnapshotError(`${context} ist kein gültiges JSON`, { cause: error });
+  }
 }
 
 async function sha256Hex(bytes) {
@@ -171,14 +219,9 @@ async function fetchDatasetResource(url, context) {
 
 async function fetchDataFile(baseUrl, descriptor, publicKeys, expectedBase, expectedVersion, shard) {
   const response = await fetchDatasetResource(new URL(descriptor.file, baseUrl), "Datenaktualisierung");
-  const bytes = await responseBytes(response, "Datenaktualisierung");
+  const bytes = await responseBytes(response, "Datenaktualisierung", MAX_DATA_FILE_BYTES);
   if ((await sha256Hex(bytes)) !== descriptor.sha256) throw new SnapshotError("Datendatei ist beschädigt");
-  let envelope;
-  try {
-    envelope = JSON.parse(new TextDecoder().decode(bytes));
-  } catch (error) {
-    throw new SnapshotError("Datendatei ist kein gültiges JSON", { cause: error });
-  }
+  const envelope = parseJson(bytes, "Datendatei");
   const payload = await verifyEnvelope(envelope, publicKeys);
   if (payload.base_version !== expectedBase || payload.version !== expectedVersion) {
     throw new SnapshotError("Datendatei gehört zu einem anderen Stand");
@@ -227,7 +270,10 @@ async function updateShard(shard, manifest, baseUrl, publicKeys) {
   }
   if (version !== manifest.version) throw new SnapshotError("Paketstand ist nicht aktuell");
   const wrapper = { cache, snapshotFile: snapshot.file, version };
-  await chrome.storage.local.set({ [key]: wrapper });
+  await chrome.storage.local.set({
+    [key]: wrapper,
+    [shardCountKey(shard)]: Object.keys(cache.entries).length,
+  });
   return wrapper;
 }
 
@@ -274,8 +320,8 @@ async function fetchManifest(config) {
   };
   task.promise = (async () => {
     const response = await fetchDatasetResource(config.datasetManifestUrl, "Datenmanifest");
-    if (!response.ok) throw new Error(`Datenmanifest fehlgeschlagen (${response.status})`);
-    const payload = await verifyDatasetManifest(await response.json(), config.publicKeys);
+    const bytes = await responseBytes(response, "Datenmanifest", MAX_MANIFEST_BYTES);
+    const payload = await verifyDatasetManifest(parseJson(bytes, "Datenmanifest"), config.publicKeys);
     manifestCache = {
       cachedAt: Date.now(),
       expiresAt: Date.parse(payload.expires_at),
@@ -335,12 +381,31 @@ export async function lookupDatasetCached(hostnames) {
 }
 
 export async function datasetCachedDomainCount() {
-  const stored = await chrome.storage.local.get(null);
-  let total = 0;
-  for (const [key, value] of Object.entries(stored)) {
-    if (key.startsWith(SHARD_KEY_PREFIX) && value?.cache?.entries) {
-      total += Object.keys(value.cache.entries).length;
+  const activeStored = await chrome.storage.local.get(ACTIVE_SHARDS_KEY);
+  const shards = Array.isArray(activeStored[ACTIVE_SHARDS_KEY])
+    ? [...new Set(activeStored[ACTIVE_SHARDS_KEY])].filter(
+        (value) => Number.isSafeInteger(value) && value >= 0 && value < SHARD_COUNT,
+      )
+    : [];
+  if (!shards.length) return 0;
+  const countKeys = shards.map(shardCountKey);
+  const stored = await chrome.storage.local.get(countKeys);
+  const missing = shards.filter((shard) => {
+    const count = stored[shardCountKey(shard)];
+    return !Number.isSafeInteger(count) || count < 0 || count > MAX_SHARD_ENTRIES;
+  });
+  if (missing.length) {
+    const wrappers = await chrome.storage.local.get(missing.map(shardKey));
+    const repaired = {};
+    for (const shard of missing) {
+      repaired[shardCountKey(shard)] = Object.keys(
+        sanitizeCache(wrappers[shardKey(shard)]?.cache, new Date(), MAX_SHARD_ENTRIES).entries,
+      ).length;
     }
+    await chrome.storage.local.set(repaired);
+    Object.assign(stored, repaired);
   }
+  let total = 0;
+  for (const key of countKeys) total += stored[key];
   return total;
 }

@@ -9,9 +9,9 @@ Brave:  brave://extensions
 3. Diesen Ordner auswählen.
 4. Auf der Einrichtungsseite das GF-Symbol anheften oder freiwillig überspringen.
 5. Das GF-Symbol öffnen. Der Status muss grün sein.
-6. Falls der Status rot ist: "Neu prüfen" wählen und lokalen Netzwerkzugriff erlauben.
+6. Falls der Status grau ist: Internetverbindung prüfen und "Neu prüfen" wählen.
 Eine Domain wird auf der betreffenden Webseite über das GF-Symbol gemeldet.
 In Suchergebnissen erscheint bewusst nur das grüne oder graue GF★.
 
-Die lokale Beta-API muss auf der Spark laufen. Bei rotem Status bleiben unbekannte
-Suchergebnisse aus Sicherheitsgründen sichtbar.
+Der Datenbestand wird automatisch signiert über HTTPS aktualisiert. Bei einem Ausfall
+bleiben unbekannte Suchergebnisse sichtbar und der letzte gültige Stand erhalten.

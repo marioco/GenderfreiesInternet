@@ -129,7 +129,8 @@ export async function verifyEnvelope(envelope, publicKeys, now = new Date()) {
     !Number.isFinite(generated) ||
     expires <= now.getTime() ||
     expires <= generated ||
-    generated > now.getTime() + 300000
+    generated > now.getTime() + MAX_CLOCK_SKEW_MS ||
+    expires > generated + MAX_PROOF_LIFETIME_MS + MAX_CLOCK_SKEW_MS
   ) {
     throw new SnapshotError("Signaturnutzlast ist abgelaufen oder aus der Zukunft");
   }

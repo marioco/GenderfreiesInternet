@@ -28,6 +28,11 @@
   const GOOGLE_NEWS_RSS_MAX_CHARS = 2_000_000;
   const GOOGLE_NEWS_ARTICLE_MAX_CHARS = 3_000_000;
   const GOOGLE_NEWS_FETCH_TIMEOUT_MS = 10_000;
+  const GOOGLE_NEWS_FEED_CACHE_MS = 2 * 60 * 1000;
+  const GOOGLE_NEWS_RESOLUTION_CACHE_MS = 10 * 60 * 1000;
+  const GOOGLE_NEWS_FAILURE_CACHE_MS = 30 * 1000;
+  const GOOGLE_NEWS_MAX_CACHE_ENTRIES = 500;
+  const GOOGLE_NEWS_MAX_RPC_NODES = 10_000;
   const GOOGLE_NEWS_ARTICLE_ID = /^[A-Za-z0-9_-]{20,2048}$/;
   const googleNewsFeedPromises = new Map();
   const googleNewsResolutionPromises = new Map();
@@ -137,6 +142,8 @@
       const candidate = new URL(value);
       if (!["http:", "https:"].includes(candidate.protocol)) return null;
       if (
+        candidate.username ||
+        candidate.password ||
         !candidate.hostname.includes(".") ||
         SEARCH_WRAPPER_HOSTS.has(candidate.hostname) ||
         candidate.hostname.endsWith(".google.com") ||
@@ -165,14 +172,54 @@
     return feed;
   }
 
+  async function responseText(response, maxBytes) {
+    const declaredLength = response.headers?.get?.("Content-Length");
+    if (declaredLength && /^[0-9]+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
+      throw new Error("Antwort ist unerwartet groß");
+    }
+    if (!response.body?.getReader) {
+      const text = await response.text();
+      if (new TextEncoder().encode(text).byteLength > maxBytes) {
+        throw new Error("Antwort ist unerwartet groß");
+      }
+      return text;
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    let text = "";
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          await reader.cancel();
+          throw new Error("Antwort ist unerwartet groß");
+        }
+        text += decoder.decode(value, { stream: true });
+      }
+      return text + decoder.decode();
+    } catch (error) {
+      if (error instanceof TypeError) throw new Error("Antwort enthält ungültigen Text", { cause: error });
+      throw error;
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
   async function fetchText(url, options, maxChars) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), GOOGLE_NEWS_FETCH_TIMEOUT_MS);
     try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
+      const response = await fetch(url, {
+        cache: "no-store",
+        redirect: "follow",
+        ...options,
+        signal: controller.signal,
+      });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const text = await response.text();
-      if (text.length > maxChars) throw new Error("Antwort ist unerwartet groß");
+      const text = await responseText(response, maxChars);
       return { response, text };
     } finally {
       clearTimeout(timeout);
@@ -195,18 +242,22 @@
     const feed = googleNewsFeedUrl();
     if (!feed) return new Map();
     const key = feed.href;
-    if (!googleNewsFeedPromises.has(key)) {
-      googleNewsFeedPromises.set(
-        key,
-        fetchText(feed, { credentials: "same-origin" }, GOOGLE_NEWS_RSS_MAX_CHARS)
-          .then(({ text }) => googleNewsRssSources(text))
-          .catch((error) => {
-            console.warn("Suchfilter konnte Google-News-Quellenliste nicht laden:", error.message);
-            return new Map();
-          }),
-      );
-    }
-    return googleNewsFeedPromises.get(key);
+    const existing = googleNewsFeedPromises.get(key);
+    if (existing && Date.now() < existing.expiresAt) return existing.promise;
+    const entry = {
+      expiresAt: Date.now() + GOOGLE_NEWS_FEED_CACHE_MS,
+      promise: fetchText(feed, { credentials: "same-origin" }, GOOGLE_NEWS_RSS_MAX_CHARS)
+        .then(({ text }) => googleNewsRssSources(text))
+        .catch((error) => {
+          console.warn("Suchfilter konnte Google-News-Quellenliste nicht laden:", error.message);
+          return new Map();
+        }),
+    };
+    googleNewsFeedPromises.delete(key);
+    googleNewsFeedPromises.set(key, entry);
+    while (googleNewsFeedPromises.size > 20)
+      googleNewsFeedPromises.delete(googleNewsFeedPromises.keys().next().value);
+    return entry.promise;
   }
 
   function googleNewsDecodeParameters(html, articleId) {
@@ -240,7 +291,9 @@
       }
     }
     const pending = [...frames];
-    while (pending.length) {
+    let inspected = 0;
+    while (pending.length && inspected < GOOGLE_NEWS_MAX_RPC_NODES) {
+      inspected += 1;
       const value = pending.shift();
       if (!Array.isArray(value)) continue;
       if (value[0] === "wrb.fr" && value[1] === "Fbv4je" && typeof value[2] === "string") {
@@ -316,22 +369,31 @@
   }
 
   async function resolveGoogleNewsUrl(articleId) {
-    if (!googleNewsResolutionPromises.has(articleId)) {
-      googleNewsResolutionPromises.set(
-        articleId,
-        (async () => {
-          const feedSources = await googleNewsFeedSources();
-          if (feedSources.has(articleId)) return feedSources.get(articleId);
-          try {
-            return await resolveGoogleNewsRedirect(articleId);
-          } catch (error) {
-            console.warn("Suchfilter konnte Google-News-Quelle nicht auflösen:", error.message);
-            return null;
-          }
-        })(),
-      );
+    const existing = googleNewsResolutionPromises.get(articleId);
+    if (existing && Date.now() < existing.expiresAt) return existing.promise;
+    const entry = {
+      expiresAt: Date.now() + GOOGLE_NEWS_RESOLUTION_CACHE_MS,
+      promise: (async () => {
+        const feedSources = await googleNewsFeedSources();
+        if (feedSources.has(articleId)) return feedSources.get(articleId);
+        try {
+          return await resolveGoogleNewsRedirect(articleId);
+        } catch (error) {
+          console.warn("Suchfilter konnte Google-News-Quelle nicht auflösen:", error.message);
+          return null;
+        }
+      })(),
+    };
+    entry.promise = entry.promise.then((result) => {
+      if (result === null) entry.expiresAt = Date.now() + GOOGLE_NEWS_FAILURE_CACHE_MS;
+      return result;
+    });
+    googleNewsResolutionPromises.delete(articleId);
+    googleNewsResolutionPromises.set(articleId, entry);
+    while (googleNewsResolutionPromises.size > GOOGLE_NEWS_MAX_CACHE_ENTRIES) {
+      googleNewsResolutionPromises.delete(googleNewsResolutionPromises.keys().next().value);
     }
-    return googleNewsResolutionPromises.get(articleId);
+    return entry.promise;
   }
 
   async function mapWithConcurrency(values, concurrency, callback) {

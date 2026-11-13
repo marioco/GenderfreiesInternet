@@ -20,12 +20,14 @@ const FILTER_LIGHT_KEY = "blockLightGenderingV1";
 const TELEMETRY_CONSENT_KEY = "shareAnonymousStatisticsV1";
 const TELEMETRY_STATE_KEY = "pendingHiddenStatisticsV1";
 const INSTALLATION_PATTERN = /^[A-Za-z0-9_-]{32}$/;
-const DOMAIN_PATTERN = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/;
+const DOMAIN_PATTERN =
+  /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const BATCH_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const MAX_TELEMETRY_BATCH = 100;
 const MAX_TELEMETRY_DOMAINS = 1000;
 const LOCAL_TELEMETRY_DAYS = 7;
 const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_API_RESPONSE_BYTES = 1_000_000;
 const REFRESH_ALARM = "suchfilter-refresh";
 const REPORT_COOLDOWN_ALARM = "suchfilter-report-cooldown";
 const COOLDOWN_BADGE_COLOR = "#d97706";
@@ -53,7 +55,7 @@ let currentCooldown = null;
 function isReportableDomain(value) {
   if (typeof value !== "string") return false;
   const hostname = value.toLowerCase().replace(/\.$/, "");
-  if (!DOMAIN_PATTERN.test(hostname)) return false;
+  if (!DOMAIN_PATTERN.test(hostname) || /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname)) return false;
   if (
     hostname === "news.google.com" ||
     hostname === "search.brave.com" ||
@@ -73,6 +75,72 @@ async function fetchWithTimeout(url, options = {}, controller = new AbortControl
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function responseBytes(response, context, maximumBytes = MAX_API_RESPONSE_BYTES) {
+  const declaredLength = response.headers?.get?.("Content-Length");
+  if (declaredLength && /^[0-9]+$/.test(declaredLength) && Number(declaredLength) > maximumBytes) {
+    throw new Error(`${context} ist unerwartet groß`);
+  }
+  if (!response.body?.getReader) {
+    if (typeof response.arrayBuffer === "function") {
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.byteLength > maximumBytes) throw new Error(`${context} ist unerwartet groß`);
+      return bytes;
+    }
+    return null;
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maximumBytes) {
+        await reader.cancel();
+        throw new Error(`${context} ist unerwartet groß`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result;
+}
+
+async function responseJson(response, context, maximumBytes = MAX_API_RESPONSE_BYTES) {
+  const bytes = await responseBytes(response, context, maximumBytes);
+  if (bytes === null && typeof response.json === "function") return response.json();
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+  } catch (error) {
+    throw new Error(`${context} enthält kein gültiges JSON`, { cause: error });
+  }
+}
+
+function retryAfterSeconds(response, payload) {
+  if (
+    Number.isInteger(payload?.cooldown_seconds) &&
+    payload.cooldown_seconds >= 1 &&
+    payload.cooldown_seconds <= MAX_COOLDOWN_SECONDS
+  )
+    return payload.cooldown_seconds;
+  const header = response.headers?.get?.("Retry-After");
+  if (typeof header !== "string") return 60;
+  if (/^[0-9]+$/.test(header)) {
+    const seconds = Number(header);
+    return Number.isSafeInteger(seconds) && seconds >= 1 ? seconds : 60;
+  }
+  const until = Date.parse(header);
+  return Number.isFinite(until) ? Math.max(1, Math.ceil((until - Date.now()) / 1000)) : 60;
 }
 
 function validatedCooldown(raw) {
@@ -220,7 +288,12 @@ function withTelemetryLock(task) {
 }
 
 function isTelemetryDomain(domain) {
-  if (typeof domain !== "string" || !DOMAIN_PATTERN.test(domain) || !domain.includes(".")) return false;
+  if (
+    typeof domain !== "string" ||
+    !DOMAIN_PATTERN.test(domain) ||
+    /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(domain)
+  )
+    return false;
   return domain
     .split(".")
     .every((label) => label.length <= 63 && !label.startsWith("-") && !label.endsWith("-"));
@@ -403,7 +476,7 @@ async function refreshDomainsNow(hostnames) {
     redirect: "error",
   });
   if (!response.ok) throw new Error(`Statusabfrage fehlgeschlagen (${response.status})`);
-  const envelope = await response.json();
+  const envelope = await responseJson(response, "Statusantwort");
   const payload = await verifyEnvelope(envelope, CONFIG.publicKeys);
   const cache = applyProofs(await loadCache(), payload);
   await saveCache(cache);
@@ -510,22 +583,20 @@ async function report(domain, category) {
   if (response.status === 429) {
     let payload = null;
     try {
-      payload = await response.json();
+      payload = await responseJson(response, "Cooldown-Antwort", 64_000);
     } catch {
       payload = null;
     }
-    const headerValue = response.headers?.get?.("Retry-After");
-    const headerSeconds = headerValue === null || headerValue === undefined ? NaN : Number(headerValue);
-    const seconds = Number.isInteger(payload?.cooldown_seconds)
-      ? payload.cooldown_seconds
-      : Number.isInteger(headerSeconds)
-        ? headerSeconds
-        : NaN;
+    const seconds = Math.min(retryAfterSeconds(response, payload), MAX_COOLDOWN_SECONDS);
     const cooldown = await saveCooldown(seconds);
     throw new Error(`Ungewöhnliche Meldefrequenz – ${cooldown.label}`);
   }
   if (!response.ok) throw new Error(`Meldung fehlgeschlagen (${response.status})`);
-  return response.json();
+  const receipt = await responseJson(response, "Meldungsantwort", 64_000);
+  if (!receipt || typeof receipt !== "object" || typeof receipt.duplicate !== "boolean") {
+    throw new Error("Meldungsantwort ist ungültig");
+  }
+  return { duplicate: receipt.duplicate };
 }
 
 async function status() {
@@ -542,7 +613,7 @@ async function status() {
       redirect: "error",
     });
     if (response.ok) {
-      const payload = await response.json();
+      const payload = await responseJson(response, "Bereitschaftsantwort", 64_000);
       online = payload?.status === "ready";
     }
   } catch {
@@ -552,7 +623,6 @@ async function status() {
   return {
     online,
     cachedDomains,
-    apiBaseUrl: CONFIG.apiBaseUrl,
     cooldown: cooldownStatus(),
   };
 }

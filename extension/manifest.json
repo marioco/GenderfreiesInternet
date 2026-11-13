@@ -1,8 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Genderfreies Internet",
-  "version": "0.8.8",
+  "short_name": "GF",
+  "version": "1.0",
+  "minimum_chrome_version": "137",
   "description": "Blendet Webseiten mit Gendersprache aus Suchergebnissen aus. Ein Stern zeigt geprüfte und noch unbekannte Domains.",
+  "homepage_url": "https://lauraklaertdas.de/genderfrei/",
   "icons": {
     "16": "gf-icon-16.png",
     "32": "gf-icon-32.png",
@@ -28,6 +31,9 @@
   "background": {
     "service_worker": "background.js",
     "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   },
   "content_scripts": [
     {

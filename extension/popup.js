@@ -1,8 +1,9 @@
 "use strict";
 
-let apiBaseUrl = null;
 let currentDomain = null;
 let cooldownActive = false;
+const DOMAIN_PATTERN =
+  /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
 function message(payload) {
   return new Promise((resolve, reject) => {
@@ -15,7 +16,6 @@ function message(payload) {
 }
 
 function renderStatus(status) {
-  if (typeof status.apiBaseUrl === "string") apiBaseUrl = status.apiBaseUrl;
   const dot = document.querySelector("#status-dot");
   dot.className = `status-dot ${status.online ? "online" : "offline"}`;
   cooldownActive = Boolean(status.cooldown);
@@ -27,7 +27,7 @@ function renderStatus(status) {
     : "Filterdienst nicht erreichbar";
   const detail = document.querySelector("#status-detail");
   detail.hidden = status.online;
-  detail.textContent = status.online ? "" : "Neu prüfen und lokalen Netzwerkzugriff erlauben.";
+  detail.textContent = status.online ? "" : "Internetverbindung prüfen und erneut versuchen.";
   const cooldownCard = document.querySelector("#cooldown-card");
   cooldownCard.hidden = !cooldownActive;
   document.querySelector("#cooldown-detail").textContent = cooldownActive
@@ -51,7 +51,13 @@ function domainFromTab(tab) {
     const url = new URL(tab.url);
     if (!["http:", "https:"].includes(url.protocol) || !url.hostname) return null;
     const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
-    return isSearchEngineDomain(hostname) ? null : hostname;
+    if (
+      !DOMAIN_PATTERN.test(hostname) ||
+      /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(hostname) ||
+      isSearchEngineDomain(hostname)
+    )
+      return null;
+    return hostname;
   } catch {
     return null;
   }
@@ -114,29 +120,10 @@ async function submitReport(category) {
   }
 }
 
-async function requestLocalNetworkAccess() {
-  if (apiBaseUrl === null) return;
-  const response = await fetch(`${apiBaseUrl}/readyz`, {
-    cache: "no-store",
-    credentials: "omit",
-    mode: "cors",
-    redirect: "error",
-    targetAddressSpace: "local",
-  });
-  if (!response.ok) throw new Error(`Lokaler Filterdienst antwortet mit HTTP ${response.status}`);
-}
-
-async function updateStatus(interactive = false) {
+async function updateStatus() {
   const retry = document.querySelector("#retry");
   retry.disabled = true;
   try {
-    if (interactive) {
-      try {
-        await requestLocalNetworkAccess();
-      } catch {
-        // Die anschliessende Statusabfrage liefert die sichtbare Fehlermeldung.
-      }
-    }
     renderStatus(await message({ type: "status" }));
   } catch {
     renderStatus({ online: false });
@@ -148,7 +135,7 @@ async function updateStatus(interactive = false) {
 for (const button of document.querySelectorAll(".report-option")) {
   button.addEventListener("click", () => submitReport(button.dataset.category));
 }
-document.querySelector("#retry").addEventListener("click", () => updateStatus(true));
+document.querySelector("#retry").addEventListener("click", updateStatus);
 document.querySelector("#open-settings").addEventListener("click", (event) => {
   event.preventDefault();
   chrome.runtime.openOptionsPage();
