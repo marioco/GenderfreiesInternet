@@ -1,24 +1,40 @@
 # Genderfreies Internet
 
-## [⬇ Aktuelle Version direkt herunterladen (ZIP)](https://github.com/marioco/GenderfreiesInternet/raw/refs/heads/main/GenderfreiesInternet.zip)
-
 Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google News, Bing, Brave Search und DuckDuckGo aus. Ein grüner Stern kennzeichnet positiv geprüfte Domains, ein grauer Stern noch nicht geprüfte Domains.
 
 - **Aktuelle Version:** 1.0
-- **Browser:** Google Chrome und Brave auf Chromium 137 oder neuer
+- **Chromium:** Chrome und Brave ab Chromium 137
+- **Safari:** manuelle GitHub-Fassung für Mac ab macOS 27
 
-## Installation
+## Downloads
 
-1. Das [aktuelle ZIP herunterladen](https://github.com/marioco/GenderfreiesInternet/raw/refs/heads/main/GenderfreiesInternet.zip).
-2. ZIP-Datei entpacken.
-3. In Chrome `chrome://extensions` oder in Brave `brave://extensions` öffnen.
-4. **Entwicklermodus** einschalten.
-5. **Entpackte Erweiterung laden** wählen.
-6. Den entpackten Ordner `GenderfreiesInternet` auswählen.
+- [⬇ Chrome-/Brave-Fassung herunterladen](https://github.com/marioco/GenderfreiesInternet/raw/refs/heads/main/GenderfreiesInternet.zip)
+- [⬇ Safari-Fassung für den Mac herunterladen](https://github.com/marioco/GenderfreiesInternet/raw/refs/heads/main/GenderfreiesInternet-Safari.zip)
+- [Einfache Safari-Installationsanleitung](https://lauraklaertdas.de/projekt/genderfreies-internet/safari/)
 
-Bei dieser direkt geladenen Version muss ein neues Programm-ZIP weiterhin manuell entpackt werden.
-Installationen aus dem Chrome Web Store werden von Chrome und Brave dagegen automatisch im
-Hintergrund aktualisiert.
+Die Safari-Fassung wird **ausschließlich über GitHub** und **nicht über den App Store** angeboten.
+
+## Safari auf dem Mac installieren
+
+1. Die [Safari-Fassung](https://github.com/marioco/GenderfreiesInternet/raw/refs/heads/main/GenderfreiesInternet-Safari.zip) herunterladen und vollständig entpacken.
+2. In Safari **Safari → Einstellungen → Erweitert** öffnen.
+3. **Funktionen für Webentwickler anzeigen** aktivieren.
+4. Den neuen Bereich **Entwickler** öffnen.
+5. **Temporäre Erweiterung hinzufügen** wählen.
+6. Den entpackten Ordner auswählen, in dem `manifest.json` liegt.
+7. Eine unterstützte Suchseite öffnen und GF den Websitezugriff erlauben.
+
+Safari behandelt diesen Download als temporäre Entwicklererweiterung. Wird GF nach einem Neustart nicht mehr angezeigt, muss derselbe Ordner erneut hinzugefügt werden. Programmupdates werden manuell von GitHub geladen; der signierte Filterdatenbestand aktualisiert sich weiterhin automatisch. Das ZIP lässt sich nicht direkt auf iPhone oder iPad installieren.
+
+## Chrome oder Brave manuell installieren
+
+1. Die [Chrome-/Brave-Fassung](https://github.com/marioco/GenderfreiesInternet/raw/refs/heads/main/GenderfreiesInternet.zip) herunterladen und entpacken.
+2. In Chrome `chrome://extensions` oder in Brave `brave://extensions` öffnen.
+3. **Entwicklermodus** einschalten.
+4. **Entpackte Erweiterung laden** wählen.
+5. Den entpackten Ordner `GenderfreiesInternet` auswählen.
+
+Eine direkt von GitHub geladene Programmversion muss bei einem Update manuell ersetzt werden. Installationen aus dem Chrome Web Store werden dagegen automatisch aktualisiert.
 
 ## Was die Erweiterung kann
 
@@ -42,24 +58,12 @@ Hintergrund aktualisiert.
 
 ## Datenstand und Serververbindung
 
-Version 1.0 verwendet den produktiven Filterdienst auf
-[`lauraklaertdas.de`](https://lauraklaertdas.de/genderfrei/). Der Browser lädt einen
-signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden
-Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und
-KI-Prüfung sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
+Version 1.0 verwendet den produktiven Filterdienst auf der [Projektseite von Laura klärt das](https://lauraklaertdas.de/projekt/genderfreies-internet/). Der Browser lädt einen signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und KI-Prüfung sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
 
 ## Datenschutz
 
-Domains sichtbarer Suchergebnisse werden für die Filterung lokal verarbeitet. Domainmeldungen
-werden nur nach ausdrücklichem Klick übertragen; die zusätzliche Ausblendungsstatistik ist
-standardmäßig ausgeschaltet. Suchbegriffe, vollständige URLs und Seiteninhalte werden nicht an
-den Betreiber übertragen. Einzelheiten stehen in der
-[Datenschutzerklärung](https://lauraklaertdas.de/genderfrei/datenschutz/).
+Domains sichtbarer Suchergebnisse werden für die Filterung lokal verarbeitet. Domainmeldungen werden nur nach ausdrücklichem Klick übertragen; die zusätzliche Ausblendungsstatistik ist standardmäßig ausgeschaltet. Suchbegriffe, vollständige URLs und Seiteninhalte werden nicht an den Betreiber übertragen. Einzelheiten stehen in der [Datenschutzerklärung](https://lauraklaertdas.de/genderfrei/datenschutz/).
 
-## Quellcode des Plugins
+## Quellcode und Prüfsummen
 
-Der veröffentlichte Browser-Code befindet sich im Ordner [`extension`](extension). Das fertige Installationspaket ist [`GenderfreiesInternet.zip`](GenderfreiesInternet.zip).
-
-## Prüfsumme
-
-Die SHA-256-Prüfsumme des aktuellen ZIP steht in [`SHA256SUMS`](SHA256SUMS).
+Der veröffentlichte Browsercode befindet sich im Ordner [`extension`](extension). Die SHA-256-Prüfsummen der Downloads stehen in [`SHA256SUMS`](SHA256SUMS).
