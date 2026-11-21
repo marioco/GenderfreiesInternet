@@ -2,7 +2,7 @@
 
 Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google News, Bing, Brave Search und DuckDuckGo aus. Ein grüner Stern kennzeichnet positiv geprüfte Domains, ein grauer Stern noch nicht geprüfte Domains.
 
-- **Aktuelle Version:** 1.0
+- **Aktuelle Version:** 1.0.2
 - **Chromium:** Chrome und Brave ab Chromium 137
 - **Safari:** manuelle GitHub-Fassung für Mac ab macOS 27
 
@@ -13,6 +13,12 @@ Blendet Webseiten mit Gendersprache aus den Suchergebnissen von Google, Google N
 - [Einfache Safari-Installationsanleitung](https://lauraklaertdas.de/projekt/genderfreies-internet/safari/)
 
 Die Safari-Fassung wird **ausschließlich über GitHub** und **nicht über den App Store** angeboten.
+
+## Neu in Version 1.0.2
+
+Google-News-Quellen werden nach vorübergehenden Auflösungsfehlern automatisch erneut angefragt.
+Bereits sichtbare graue Sterne wechseln ohne Neuladen auf den geprüften Status, sobald Google die
+Quelle wieder liefert.
 
 ## Safari auf dem Mac installieren
 
@@ -58,7 +64,7 @@ Eine direkt von GitHub geladene Programmversion muss bei einem Update manuell er
 
 ## Datenstand und Serververbindung
 
-Version 1.0 verwendet den produktiven Filterdienst auf der [Projektseite von Laura klärt das](https://lauraklaertdas.de/projekt/genderfreies-internet/). Der Browser lädt einen signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und KI-Prüfung sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
+Version 1.0.2 verwendet den produktiven Filterdienst auf der [Projektseite von Laura klärt das](https://lauraklaertdas.de/projekt/genderfreies-internet/). Der Browser lädt einen signierten Datenbestand und prüft alle 30 Minuten auf Änderungen. Bei einem vorübergehenden Netzausfall bleibt der letzte gültige lokale Stand verfügbar. Server, Datenbank, Crawler und KI-Prüfung sind bewusst **nicht** Teil dieses öffentlichen Repositorys.
 
 ## Datenschutz
 

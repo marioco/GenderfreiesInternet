@@ -1,6 +1,7 @@
 "use strict";
 
 (() => {
+  const browserApi = globalThis.browser?.runtime ? globalThis.browser : globalThis.chrome;
   const ENGINE_RULES = [
     { host: /^(?:www\.)?google\.(?:de|com)$/, selectors: ["div.MjjYud", "div.g", "div.SoaBEf"] },
     { host: /^news\.google\.com$/, selectors: ["article", "div.SoaBEf"] },
@@ -24,21 +25,22 @@
   const FILTER_LIGHT_KEY = "blockLightGenderingV1";
   const PREDEFINED_EXCEPTIONS_KEY = "predefinedDomainExceptionsV1";
   const CUSTOM_EXCEPTIONS_KEY = "customDomainExceptionsV1";
+  const DATASET_SHARD_KEY_PREFIX = "signedDatasetShardV1:";
   const GOOGLE_NEWS_RESOLVE_CONCURRENCY = 2;
-  const GOOGLE_NEWS_RSS_MAX_BYTES = 2_000_000;
+  const GOOGLE_NEWS_RPC_MAX_BYTES = 2_000_000;
   const GOOGLE_NEWS_ARTICLE_MAX_BYTES = 3_000_000;
   const GOOGLE_NEWS_FETCH_TIMEOUT_MS = 10_000;
-  const GOOGLE_NEWS_FEED_CACHE_MS = 2 * 60 * 1000;
   const GOOGLE_NEWS_RESOLUTION_CACHE_MS = 10 * 60 * 1000;
   const GOOGLE_NEWS_FAILURE_CACHE_MS = 30 * 1000;
+  const GOOGLE_NEWS_RETRY_DELAYS_MS = [250, 1000, 5000];
   const GOOGLE_NEWS_MAX_CACHE_ENTRIES = 500;
   const GOOGLE_NEWS_MAX_RPC_NODES = 10_000;
   const GOOGLE_NEWS_ARTICLE_ID = /^[A-Za-z0-9_-]{20,2048}$/;
-  const googleNewsFeedPromises = new Map();
   const googleNewsResolutionPromises = new Map();
   let processed = new WeakMap();
   let failedLookups = new WeakMap();
   let googleNewsIdsByRoot = new WeakMap();
+  let failedGoogleNewsResolutions = new WeakMap();
   let scheduled = false;
   let scanning = false;
   let rescanRequested = false;
@@ -156,22 +158,6 @@
     }
   }
 
-  function googleNewsFeedUrl() {
-    if (location.hostname !== "news.google.com") return null;
-    let pathname;
-    if (location.pathname === "/" || location.pathname === "") pathname = "/rss";
-    else if (location.pathname === "/search") pathname = "/rss/search";
-    else if (/^\/(?:topics|headlines\/section\/topic)\/[A-Za-z0-9_-]+\/?$/.test(location.pathname))
-      pathname = `/rss${location.pathname}`;
-    else return null;
-    const feed = new URL(pathname, location.origin);
-    for (const key of ["q", "hl", "gl", "ceid"]) {
-      const value = new URL(location.href).searchParams.get(key);
-      if (value) feed.searchParams.set(key, value);
-    }
-    return feed;
-  }
-
   async function responseText(response, maxBytes) {
     const declaredLength = response.headers?.get?.("Content-Length");
     if (declaredLength && /^[0-9]+$/.test(declaredLength) && Number(declaredLength) > maxBytes) {
@@ -216,6 +202,7 @@
         cache: "no-store",
         redirect: "follow",
         ...options,
+        referrerPolicy: "no-referrer",
         signal: controller.signal,
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -224,40 +211,6 @@
     } finally {
       clearTimeout(timeout);
     }
-  }
-
-  function googleNewsRssSources(xmlText) {
-    const xml = new DOMParser().parseFromString(xmlText, "application/xml");
-    if (xml.querySelector("parsererror")) throw new Error("Ungültige Google-News-RSS-Antwort");
-    const sources = new Map();
-    for (const item of xml.querySelectorAll("item")) {
-      const id = (item.querySelector("guid")?.textContent || "").trim();
-      const source = externalUrl(item.querySelector("source")?.getAttribute("url") || "");
-      if (GOOGLE_NEWS_ARTICLE_ID.test(id) && source) sources.set(id, source);
-    }
-    return sources;
-  }
-
-  async function googleNewsFeedSources() {
-    const feed = googleNewsFeedUrl();
-    if (!feed) return new Map();
-    const key = feed.href;
-    const existing = googleNewsFeedPromises.get(key);
-    if (existing && Date.now() < existing.expiresAt) return existing.promise;
-    const entry = {
-      expiresAt: Date.now() + GOOGLE_NEWS_FEED_CACHE_MS,
-      promise: fetchText(feed, { credentials: "same-origin" }, GOOGLE_NEWS_RSS_MAX_BYTES)
-        .then(({ text }) => googleNewsRssSources(text))
-        .catch((error) => {
-          console.warn("Suchfilter konnte Google-News-Quellenliste nicht laden:", error.message);
-          return new Map();
-        }),
-    };
-    googleNewsFeedPromises.delete(key);
-    googleNewsFeedPromises.set(key, entry);
-    while (googleNewsFeedPromises.size > 20)
-      googleNewsFeedPromises.delete(googleNewsFeedPromises.keys().next().value);
-    return entry.promise;
   }
 
   function googleNewsDecodeParameters(html, articleId) {
@@ -367,7 +320,7 @@
         headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
         method: "POST",
       },
-      GOOGLE_NEWS_RSS_MAX_BYTES,
+      GOOGLE_NEWS_RPC_MAX_BYTES,
     );
     return googleNewsRpcUrl(text);
   }
@@ -377,16 +330,10 @@
     if (existing && Date.now() < existing.expiresAt) return existing.promise;
     const entry = {
       expiresAt: Date.now() + GOOGLE_NEWS_RESOLUTION_CACHE_MS,
-      promise: (async () => {
-        const feedSources = await googleNewsFeedSources();
-        if (feedSources.has(articleId)) return feedSources.get(articleId);
-        try {
-          return await resolveGoogleNewsRedirect(articleId);
-        } catch (error) {
-          console.warn("Suchfilter konnte Google-News-Quelle nicht auflösen:", error.message);
-          return null;
-        }
-      })(),
+      promise: resolveGoogleNewsRedirect(articleId).catch((error) => {
+        console.warn("Suchfilter konnte Google-News-Quelle nicht auflösen:", error.message);
+        return null;
+      }),
     };
     entry.promise = entry.promise.then((result) => {
       if (result === null) entry.expiresAt = Date.now() + GOOGLE_NEWS_FAILURE_CACHE_MS;
@@ -501,8 +448,8 @@
 
   function message(payload) {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage(payload, (response) => {
-        if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+      browserApi.runtime.sendMessage(payload, (response) => {
+        if (browserApi.runtime.lastError) reject(browserApi.runtime.lastError);
         else if (!response?.ok) reject(new Error(response?.error || "Erweiterungsanfrage fehlgeschlagen"));
         else resolve(response.value);
       });
@@ -541,6 +488,51 @@
     root.prepend(marker);
   }
 
+  async function applyResolvedStatuses(candidates) {
+    const pending = candidates.filter(({ root, url }) => processed.get(root) !== url.href);
+    for (let offset = 0; offset < pending.length; offset += 100) {
+      const batch = pending.slice(offset, offset + 100);
+      const hostnames = batch.map(({ url }) => url.hostname);
+      try {
+        const statuses = await message({ type: "lookup", hostnames });
+        const hiddenDomains = [];
+        const retryItems = [];
+        batch.forEach(({ root, url }, index) => {
+          processed.set(root, url.href);
+          const status = statuses[index] || { domain: hostnames[index], state: null, known: false };
+          decorate(root, status);
+          if (status.retry === true && !status.known) {
+            const previous = failedLookups.get(root);
+            const attempts = previous?.href === url.href ? previous.attempts + 1 : 1;
+            failedLookups.set(root, { attempts, href: url.href });
+            if (attempts <= RETRY_DELAYS_MS.length) retryItems.push({ attempts, root, url });
+          } else {
+            failedLookups.delete(root);
+          }
+          if (status.state === "blocked") hiddenDomains.push(status.domain || hostnames[index]);
+        });
+        scheduleRetries(retryItems);
+        if (hiddenDomains.length) {
+          message({ type: "hidden", domains: hiddenDomains }).catch((error) =>
+            console.warn("Suchfilter konnte Ausblendungszaehler nicht vormerken:", error.message),
+          );
+        }
+      } catch (error) {
+        console.warn("Suchfilter konnte Status nicht laden:", error.message);
+        const retryItems = [];
+        batch.forEach(({ root, url }, index) => {
+          const previous = failedLookups.get(root);
+          const attempts = previous?.href === url.href ? previous.attempts + 1 : 1;
+          failedLookups.set(root, { attempts, href: url.href });
+          processed.set(root, url.href);
+          decorate(root, { domain: hostnames[index], state: null, known: false });
+          if (attempts <= RETRY_DELAYS_MS.length) retryItems.push({ attempts, root, url });
+        });
+        scheduleRetries(retryItems);
+      }
+    }
+  }
+
   async function scan() {
     scheduled = false;
     if (scanning) {
@@ -558,52 +550,31 @@
           googleNewsIdsByRoot.set(root, articleId);
           processed.delete(root);
           failedLookups.delete(root);
+          failedGoogleNewsResolutions.delete(root);
           decorate(root, { domain: null, state: null, known: false });
         }
         return { articleId, direct, root };
       });
-      const resolved = await mapWithConcurrency(
-        discovered.filter(Boolean),
-        GOOGLE_NEWS_RESOLVE_CONCURRENCY,
-        async ({ articleId, direct, root }) => {
-          if (direct) return { root, url: direct };
-          return { root, url: articleId ? await resolveGoogleNewsUrl(articleId) : null };
-        },
-      );
-      const candidates = resolved.filter((item) => item?.url);
-      const pending = candidates.filter(({ root, url }) => processed.get(root) !== url.href);
-      if (!pending.length) return;
-      for (let offset = 0; offset < pending.length; offset += 100) {
-        const batch = pending.slice(offset, offset + 100);
-        const hostnames = batch.map(({ url }) => url.hostname);
-        try {
-          const statuses = await message({ type: "lookup", hostnames });
-          const hiddenDomains = [];
-          batch.forEach(({ root, url }, index) => {
-            processed.set(root, url.href);
-            failedLookups.delete(root);
-            const status = statuses[index] || { domain: hostnames[index], state: null, known: false };
-            decorate(root, status);
-            if (status.state === "blocked") hiddenDomains.push(status.domain || hostnames[index]);
-          });
-          if (hiddenDomains.length) {
-            message({ type: "hidden", domains: hiddenDomains }).catch((error) =>
-              console.warn("Suchfilter konnte Ausblendungszaehler nicht vormerken:", error.message),
-            );
-          }
-        } catch (error) {
-          console.warn("Suchfilter konnte Status nicht laden:", error.message);
-          const retryItems = [];
-          batch.forEach(({ root, url }, index) => {
-            const previous = failedLookups.get(root);
-            const attempts = previous?.href === url.href ? previous.attempts + 1 : 1;
-            failedLookups.set(root, { attempts, href: url.href });
-            processed.set(root, url.href);
-            decorate(root, { domain: hostnames[index], state: null, known: false });
-            if (attempts <= RETRY_DELAYS_MS.length) retryItems.push({ attempts, root, url });
-          });
-          scheduleRetries(retryItems);
+      const values = discovered.filter(Boolean);
+      const direct = values.filter(({ direct }) => direct);
+      for (const { root } of direct) failedGoogleNewsResolutions.delete(root);
+      await applyResolvedStatuses(direct.map(({ direct, root }) => ({ root, url: direct })));
+      const opaque = values.filter(({ articleId, direct, root }) => {
+        if (direct || !articleId) return false;
+        const failure = failedGoogleNewsResolutions.get(root);
+        return failure?.articleId !== articleId || failure.retryAt <= Date.now();
+      });
+      for (let offset = 0; offset < opaque.length; offset += GOOGLE_NEWS_RESOLVE_CONCURRENCY) {
+        const resolved = await mapWithConcurrency(
+          opaque.slice(offset, offset + GOOGLE_NEWS_RESOLVE_CONCURRENCY),
+          GOOGLE_NEWS_RESOLVE_CONCURRENCY,
+          async ({ articleId, root }) => ({ articleId, root, url: await resolveGoogleNewsUrl(articleId) }),
+        );
+        scheduleGoogleNewsResolutionRetries(resolved.filter(({ url }) => !url));
+        for (const { root, url } of resolved) {
+          if (url) failedGoogleNewsResolutions.delete(root);
         }
+        await applyResolvedStatuses(resolved.filter(({ url }) => url));
       }
     } finally {
       scanning = false;
@@ -611,6 +582,28 @@
         rescanRequested = false;
         scheduleScan(0);
       }
+    }
+  }
+
+  function scheduleGoogleNewsResolutionRetries(items) {
+    for (const { articleId, root } of items) {
+      const previous = failedGoogleNewsResolutions.get(root);
+      const attempts = previous?.articleId === articleId ? previous.attempts + 1 : 1;
+      const delay = GOOGLE_NEWS_RETRY_DELAYS_MS[attempts - 1];
+      if (delay === undefined) {
+        failedGoogleNewsResolutions.set(root, { articleId, attempts, retryAt: Number.POSITIVE_INFINITY });
+        continue;
+      }
+      const retryAt = Date.now() + delay;
+      failedGoogleNewsResolutions.set(root, { articleId, attempts, retryAt });
+      setTimeout(() => {
+        const failure = failedGoogleNewsResolutions.get(root);
+        if (failure?.articleId !== articleId || failure.attempts !== attempts || failure.retryAt !== retryAt)
+          return;
+        googleNewsResolutionPromises.delete(articleId);
+        failedGoogleNewsResolutions.set(root, { ...failure, retryAt: 0 });
+        scheduleScan(0);
+      }, delay);
     }
   }
 
@@ -637,17 +630,26 @@
 
   if (engine()) {
     scheduleScan();
-    chrome.storage?.onChanged?.addListener((changes, areaName) => {
+    browserApi.storage?.onChanged?.addListener((changes, areaName) => {
+      const changedKeys = Object.keys(changes || {});
       if (
         areaName !== "local" ||
-        ![FILTER_LIGHT_KEY, PREDEFINED_EXCEPTIONS_KEY, CUSTOM_EXCEPTIONS_KEY].some((key) =>
-          Object.hasOwn(changes, key),
+        !(
+          [FILTER_LIGHT_KEY, PREDEFINED_EXCEPTIONS_KEY, CUSTOM_EXCEPTIONS_KEY].some((key) =>
+            Object.hasOwn(changes, key),
+          ) ||
+          changedKeys.some(
+            (key) =>
+              key.startsWith(DATASET_SHARD_KEY_PREFIX) &&
+              changes[key]?.oldValue?.version !== changes[key]?.newValue?.version,
+          )
         )
       )
         return;
       processed = new WeakMap();
       failedLookups = new WeakMap();
       googleNewsIdsByRoot = new WeakMap();
+      failedGoogleNewsResolutions = new WeakMap();
       scheduleScan(0);
     });
     new MutationObserver(() => scheduleScan()).observe(document.documentElement, {

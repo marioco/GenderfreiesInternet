@@ -1,5 +1,7 @@
 "use strict";
 
+const browserApi = globalThis.browser?.runtime ? globalThis.browser : globalThis.chrome;
+const { request: requestDataConsent } = globalThis.SuchfilterDataConsent;
 let currentDomain = null;
 let cooldownActive = false;
 const DOMAIN_PATTERN =
@@ -7,8 +9,8 @@ const DOMAIN_PATTERN =
 
 function message(payload) {
   return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(payload, (response) => {
-      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+    browserApi.runtime.sendMessage(payload, (response) => {
+      if (browserApi.runtime.lastError) reject(browserApi.runtime.lastError);
       else if (!response?.ok) reject(new Error(response?.error || "Erweiterungsanfrage fehlgeschlagen"));
       else resolve(response.value);
     });
@@ -38,8 +40,8 @@ function renderStatus(status) {
 
 function activeTab() {
   return new Promise((resolve, reject) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+    browserApi.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (browserApi.runtime.lastError) reject(browserApi.runtime.lastError);
       else resolve(tabs[0] || null);
     });
   });
@@ -104,6 +106,12 @@ async function submitReport(category) {
   feedback.className = "pending";
   feedback.textContent = "Meldung wird gesendet …";
   try {
+    const granted = await requestDataConsent(["browsingActivity", "personallyIdentifyingInfo"]);
+    if (!granted) {
+      feedback.className = "error";
+      feedback.textContent = "Meldung nicht gesendet: Datenschutz-Zustimmung wurde nicht erteilt.";
+      return;
+    }
     const receipt = await message({ type: "report", domain: currentDomain, category });
     feedback.className = "success";
     feedback.textContent = receipt.duplicate ? "Bereits gemeldet." : "Zur Prüfung eingereicht.";
@@ -138,7 +146,7 @@ for (const button of document.querySelectorAll(".report-option")) {
 document.querySelector("#retry").addEventListener("click", updateStatus);
 document.querySelector("#open-settings").addEventListener("click", (event) => {
   event.preventDefault();
-  chrome.runtime.openOptionsPage();
+  browserApi.runtime.openOptionsPage();
 });
 loadCurrentDomain().catch(() => {
   renderCurrentDomain(null);

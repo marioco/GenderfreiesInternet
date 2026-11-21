@@ -1,9 +1,23 @@
 "use strict";
 
+const browserApi = globalThis.browser?.runtime ? globalThis.browser : globalThis.chrome;
 const statusLine = document.querySelector("#pin-status");
 const checkButton = document.querySelector("#check-pin");
 const finishButton = document.querySelector("#finish-onboarding");
 let pinCheckSequence = 0;
+
+function isSafariBuild() {
+  const manifest = browserApi.runtime?.getManifest?.();
+  return Boolean(manifest?.browser_specific_settings?.safari);
+}
+
+function showSafariState() {
+  statusLine.classList.remove("status-error", "pin-success");
+  statusLine.textContent =
+    "Öffne anschließend eine unterstützte Suchseite und erlaube GF dort beim ersten Einsatz den Zugriff.";
+  checkButton.hidden = true;
+  finishButton.textContent = "Einrichtung abschließen";
+}
 
 function showPinState(isPinned) {
   statusLine.classList.remove("status-error", "pin-success");
@@ -24,13 +38,13 @@ async function checkPinState() {
   checkButton.disabled = true;
   statusLine.classList.remove("status-error", "pin-success");
   try {
-    if (!chrome.action?.getUserSettings) {
+    if (!browserApi.action?.getUserSettings) {
       statusLine.classList.add("status-error");
       statusLine.textContent =
         "Der Browser kann den Zustand nicht melden. Bitte das Symbol nach der Anleitung anheften.";
       return;
     }
-    const settings = await chrome.action.getUserSettings();
+    const settings = await browserApi.action.getUserSettings();
     if (sequence !== pinCheckSequence) return;
     showPinState(settings?.isOnToolbar === true);
   } catch (error) {
@@ -45,9 +59,9 @@ async function checkPinState() {
 async function finishOnboarding() {
   finishButton.disabled = true;
   try {
-    const currentTab = await chrome.tabs?.getCurrent?.();
-    if (currentTab?.id !== undefined && chrome.tabs?.remove) {
-      await chrome.tabs.remove(currentTab.id);
+    const currentTab = await browserApi.tabs?.getCurrent?.();
+    if (currentTab?.id !== undefined && browserApi.tabs?.remove) {
+      await browserApi.tabs.remove(currentTab.id);
       return;
     }
     window.close();
@@ -62,5 +76,9 @@ async function finishOnboarding() {
 
 checkButton.addEventListener("click", checkPinState);
 finishButton.addEventListener("click", finishOnboarding);
-window.addEventListener("focus", checkPinState);
-checkPinState();
+if (isSafariBuild()) {
+  showSafariState();
+} else {
+  window.addEventListener("focus", checkPinState);
+  checkPinState();
+}

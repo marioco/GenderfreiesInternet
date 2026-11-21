@@ -1,10 +1,12 @@
 "use strict";
 
 import "./exceptions.js";
+import "./data-consent.js";
 import { CONFIG } from "./config.js";
 import { datasetCachedDomainCount, lookupDataset, lookupDatasetCached } from "./dataset.js";
 import { applyProofs, lookupCached, sanitizeCache, verifyEnvelope } from "./snapshot.js";
 
+const browserApi = globalThis.browser?.runtime ? globalThis.browser : globalThis.chrome;
 const {
   CUSTOM_KEY,
   PREDEFINED_KEY,
@@ -12,6 +14,7 @@ const {
   sanitizeCustomDomains,
   sanitizePredefinedOverrides,
 } = globalThis.SuchfilterExceptions;
+const { has: hasDataConsent } = globalThis.SuchfilterDataConsent;
 
 const CACHE_KEY = "signedDomainCacheV1";
 const INSTALLATION_KEY = "installationIdV1";
@@ -182,21 +185,21 @@ function cooldownStatus() {
 }
 
 async function loadStoredCooldown() {
-  const stored = await chrome.storage.local.get(REPORT_COOLDOWN_KEY);
+  const stored = await browserApi.storage.local.get(REPORT_COOLDOWN_KEY);
   const cooldown = validatedCooldown(stored[REPORT_COOLDOWN_KEY]);
   if (stored[REPORT_COOLDOWN_KEY] && cooldown === null) {
-    await chrome.storage.local.remove(REPORT_COOLDOWN_KEY);
+    await browserApi.storage.local.remove(REPORT_COOLDOWN_KEY);
   }
   currentCooldown = cooldown;
   return cooldown;
 }
 
 async function ensureCooldownAlarm() {
-  const alarm = await chrome.alarms.get(REPORT_COOLDOWN_ALARM);
+  const alarm = await browserApi.alarms.get(REPORT_COOLDOWN_ALARM);
   if (cooldownStatus() && !alarm) {
-    await chrome.alarms.create(REPORT_COOLDOWN_ALARM, { periodInMinutes: 1 });
-  } else if (!cooldownStatus() && alarm && chrome.alarms.clear) {
-    await chrome.alarms.clear(REPORT_COOLDOWN_ALARM);
+    await browserApi.alarms.create(REPORT_COOLDOWN_ALARM, { periodInMinutes: 1 });
+  } else if (!cooldownStatus() && alarm && browserApi.alarms.clear) {
+    await browserApi.alarms.clear(REPORT_COOLDOWN_ALARM);
   }
 }
 
@@ -206,7 +209,7 @@ async function saveCooldown(seconds) {
   }
   const until = Date.now() + seconds * 1000;
   currentCooldown = { until: Math.max(until, currentCooldown?.until || 0) };
-  await chrome.storage.local.set({ [REPORT_COOLDOWN_KEY]: currentCooldown });
+  await browserApi.storage.local.set({ [REPORT_COOLDOWN_KEY]: currentCooldown });
   await ensureCooldownAlarm();
   await updateActionAppearance();
   return cooldownStatus();
@@ -218,20 +221,20 @@ async function updateActionAppearance(online = currentOnline) {
   const cooldown = cooldownStatus();
   const cooldownState = cooldown ? `cooldown-${Math.ceil(cooldown.remainingSeconds / 60)}` : "current";
   const state = `${baseState}-${cooldownState}`;
-  if (renderedActionState === state || !chrome.action?.setIcon) return;
+  if (renderedActionState === state || !browserApi.action?.setIcon) return;
   try {
-    await chrome.action.setIcon({ path: ACTION_ICONS[baseState] });
-    if (chrome.action.setBadgeText) {
-      await chrome.action.setBadgeText({ text: cooldown ? "!" : "" });
+    await browserApi.action.setIcon({ path: ACTION_ICONS[baseState] });
+    if (browserApi.action.setBadgeText) {
+      await browserApi.action.setBadgeText({ text: cooldown ? "!" : "" });
     }
-    if (cooldown && chrome.action.setBadgeBackgroundColor) {
-      await chrome.action.setBadgeBackgroundColor({ color: COOLDOWN_BADGE_COLOR });
+    if (cooldown && browserApi.action.setBadgeBackgroundColor) {
+      await browserApi.action.setBadgeBackgroundColor({ color: COOLDOWN_BADGE_COLOR });
     }
-    if (cooldown && chrome.action.setBadgeTextColor) {
-      await chrome.action.setBadgeTextColor({ color: "#ffffff" });
+    if (cooldown && browserApi.action.setBadgeTextColor) {
+      await browserApi.action.setBadgeTextColor({ color: "#ffffff" });
     }
-    if (chrome.action.setTitle) {
-      await chrome.action.setTitle({
+    if (browserApi.action.setTitle) {
+      await browserApi.action.setTitle({
         title: cooldown
           ? `Ungewöhnliche Meldefrequenz – ${cooldown.label}`
           : online
@@ -255,10 +258,10 @@ function randomInstallationId() {
 async function installationId() {
   if (installationTask === null) {
     installationTask = (async () => {
-      const stored = await chrome.storage.local.get(INSTALLATION_KEY);
+      const stored = await browserApi.storage.local.get(INSTALLATION_KEY);
       if (INSTALLATION_PATTERN.test(stored[INSTALLATION_KEY])) return stored[INSTALLATION_KEY];
       const value = randomInstallationId();
-      await chrome.storage.local.set({ [INSTALLATION_KEY]: value });
+      await browserApi.storage.local.set({ [INSTALLATION_KEY]: value });
       return value;
     })().catch((error) => {
       installationTask = null;
@@ -269,13 +272,13 @@ async function installationId() {
 }
 
 async function loadCache() {
-  const stored = await chrome.storage.local.get(CACHE_KEY);
+  const stored = await browserApi.storage.local.get(CACHE_KEY);
   const cache = stored[CACHE_KEY];
   return sanitizeCache(cache);
 }
 
 async function saveCache(cache) {
-  await chrome.storage.local.set({ [CACHE_KEY]: cache });
+  await browserApi.storage.local.set({ [CACHE_KEY]: cache });
 }
 
 function withTelemetryLock(task) {
@@ -355,27 +358,35 @@ function sanitizedTelemetryState(raw) {
 }
 
 async function telemetryConsent() {
-  const stored = await chrome.storage.local.get(TELEMETRY_CONSENT_KEY);
-  return stored[TELEMETRY_CONSENT_KEY] === true;
+  if (CONFIG.anonymousStatisticsEnabled !== true) {
+    await browserApi.storage.local.remove([TELEMETRY_CONSENT_KEY, TELEMETRY_STATE_KEY]);
+    return false;
+  }
+  const stored = await browserApi.storage.local.get(TELEMETRY_CONSENT_KEY);
+  if (stored[TELEMETRY_CONSENT_KEY] !== true) return false;
+  if (await hasDataConsent(["browsingActivity", "technicalAndInteraction"])) return true;
+  await browserApi.storage.local.remove([TELEMETRY_CONSENT_KEY, TELEMETRY_STATE_KEY]);
+  return false;
 }
 
 async function recordHidden(domains) {
+  if (CONFIG.anonymousStatisticsEnabled !== true) return { recorded: 0 };
   if (!(await telemetryConsent())) return { recorded: 0 };
   const valid = domains.slice(0, 100).filter((domain) => isTelemetryDomain(domain));
   if (!valid.length) return { recorded: 0 };
   return withTelemetryLock(async () => {
     if (!(await telemetryConsent())) {
-      await chrome.storage.local.remove(TELEMETRY_STATE_KEY);
+      await browserApi.storage.local.remove(TELEMETRY_STATE_KEY);
       return { recorded: 0 };
     }
-    const stored = await chrome.storage.local.get(TELEMETRY_STATE_KEY);
+    const stored = await browserApi.storage.local.get(TELEMETRY_STATE_KEY);
     const state = sanitizedTelemetryState(stored[TELEMETRY_STATE_KEY]);
     for (const domain of valid) {
       if (!Object.hasOwn(state.current, domain) && Object.keys(state.current).length >= MAX_TELEMETRY_DOMAINS)
         continue;
       state.current[domain] = Math.min((state.current[domain] || 0) + 1, 1_000_000);
     }
-    await chrome.storage.local.set({ [TELEMETRY_STATE_KEY]: state });
+    await browserApi.storage.local.set({ [TELEMETRY_STATE_KEY]: state });
     return { recorded: valid.length };
   });
 }
@@ -401,26 +412,26 @@ function nextTelemetryBatch(state) {
 async function prepareTelemetryBatch() {
   return withTelemetryLock(async () => {
     if (!(await telemetryConsent())) {
-      await chrome.storage.local.remove(TELEMETRY_STATE_KEY);
+      await browserApi.storage.local.remove(TELEMETRY_STATE_KEY);
       return null;
     }
-    const stored = await chrome.storage.local.get(TELEMETRY_STATE_KEY);
+    const stored = await browserApi.storage.local.get(TELEMETRY_STATE_KEY);
     const state = sanitizedTelemetryState(stored[TELEMETRY_STATE_KEY]);
     const batch = nextTelemetryBatch(state);
-    if (batch) await chrome.storage.local.set({ [TELEMETRY_STATE_KEY]: state });
+    if (batch) await browserApi.storage.local.set({ [TELEMETRY_STATE_KEY]: state });
     return batch;
   });
 }
 
 async function acknowledgeTelemetryBatch(batchId) {
   await withTelemetryLock(async () => {
-    const stored = await chrome.storage.local.get(TELEMETRY_STATE_KEY);
+    const stored = await browserApi.storage.local.get(TELEMETRY_STATE_KEY);
     const state = sanitizedTelemetryState(stored[TELEMETRY_STATE_KEY]);
     state.batches = state.batches.filter((batch) => batch.batchId !== batchId);
     if (state.batches.length || Object.keys(state.current).length) {
-      await chrome.storage.local.set({ [TELEMETRY_STATE_KEY]: state });
+      await browserApi.storage.local.set({ [TELEMETRY_STATE_KEY]: state });
     } else {
-      await chrome.storage.local.remove(TELEMETRY_STATE_KEY);
+      await browserApi.storage.local.remove(TELEMETRY_STATE_KEY);
     }
   });
 }
@@ -494,7 +505,7 @@ function refreshDomains(hostnames) {
 
 async function blockLightPreference() {
   try {
-    const stored = await chrome.storage.local.get(FILTER_LIGHT_KEY);
+    const stored = await browserApi.storage.local.get(FILTER_LIGHT_KEY);
     return stored[FILTER_LIGHT_KEY] === true;
   } catch (error) {
     console.warn("Suchfilter verwendet den Hard-Standard:", error.message);
@@ -505,8 +516,8 @@ async function blockLightPreference() {
 async function localDomainPreferences() {
   try {
     const [predefinedStored, customStored] = await Promise.all([
-      chrome.storage.local.get(PREDEFINED_KEY),
-      chrome.storage.local.get(CUSTOM_KEY),
+      browserApi.storage.local.get(PREDEFINED_KEY),
+      browserApi.storage.local.get(CUSTOM_KEY),
     ]);
     return {
       customDomains: sanitizeCustomDomains(customStored[CUSTOM_KEY]),
@@ -524,7 +535,11 @@ async function lookupCentral(hostnames) {
       return await lookupDataset(hostnames, CONFIG);
     } catch (error) {
       console.warn("Suchfilter verwendet letzten gültigen Datenbestand:", error.message);
-      return lookupDatasetCached(hostnames);
+      const cached = await lookupDatasetCached(hostnames);
+      if (cached.some((status) => status.known)) {
+        return cached.map((status) => (status.known ? status : { ...status, retry: true }));
+      }
+      throw error;
     }
   }
   let cache = await loadCache();
@@ -567,6 +582,9 @@ async function report(domain, category) {
   const hostname = normalizedReportableDomain(domain);
   if (hostname === null || !["hard", "light"].includes(category)) {
     throw new Error("Diese Seite kann nicht gemeldet werden");
+  }
+  if (!(await hasDataConsent(["browsingActivity", "personallyIdentifyingInfo"]))) {
+    throw new Error("Datenschutz-Zustimmung für Meldungen fehlt");
   }
   await loadStoredCooldown();
   const activeCooldown = cooldownStatus();
@@ -629,10 +647,10 @@ async function status() {
 }
 
 async function ensureRefreshAlarm() {
-  const alarm = await chrome.alarms.get(REFRESH_ALARM);
+  const alarm = await browserApi.alarms.get(REFRESH_ALARM);
   if (!alarm || alarm.periodInMinutes !== CONFIG.syncIntervalMinutes) {
-    if (alarm && chrome.alarms.clear) await chrome.alarms.clear(REFRESH_ALARM);
-    await chrome.alarms.create(REFRESH_ALARM, {
+    if (alarm && browserApi.alarms.clear) await browserApi.alarms.clear(REFRESH_ALARM);
+    await browserApi.alarms.create(REFRESH_ALARM, {
       periodInMinutes: CONFIG.syncIntervalMinutes,
     });
   }
@@ -640,11 +658,11 @@ async function ensureRefreshAlarm() {
 
 async function openOnboarding(details) {
   if (details?.reason !== "install") return;
-  if (!chrome.runtime.getURL || !chrome.tabs?.create) {
+  if (!browserApi.runtime.getURL || !browserApi.tabs?.create) {
     console.warn("Suchfilter-Einrichtung konnte nicht automatisch geöffnet werden");
     return;
   }
-  await chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") });
+  await browserApi.tabs.create({ url: browserApi.runtime.getURL("onboarding.html") });
 }
 
 ensureRefreshAlarm().catch((error) =>
@@ -657,8 +675,8 @@ loadStoredCooldown()
   .then(() => status())
   .catch((error) => console.warn("Suchfilter-Startprüfung fehlgeschlagen:", error.message));
 
-chrome.runtime.onInstalled.addListener((details) => {
-  chrome.storage.local
+browserApi.runtime.onInstalled.addListener((details) => {
+  browserApi.storage.local
     .remove("availableExtensionUpdateV1")
     .catch((error) => console.warn("Veralteter Updatezustand konnte nicht gelöscht werden:", error.message));
   installationId().catch((error) => console.error("Installationskennung fehlgeschlagen", error));
@@ -668,11 +686,11 @@ chrome.runtime.onInstalled.addListener((details) => {
   );
 });
 
-chrome.runtime.onUpdateAvailable?.addListener(() => {
-  chrome.runtime.reload();
+browserApi.runtime.onUpdateAvailable?.addListener(() => {
+  browserApi.runtime.reload();
 });
 
-chrome.storage.onChanged?.addListener((changes, areaName) => {
+browserApi.storage.onChanged?.addListener((changes, areaName) => {
   if (
     areaName !== "local" ||
     !Object.hasOwn(changes, TELEMETRY_CONSENT_KEY) ||
@@ -680,12 +698,30 @@ chrome.storage.onChanged?.addListener((changes, areaName) => {
   )
     return;
   telemetryAbortController?.abort();
-  withTelemetryLock(() => chrome.storage.local.remove(TELEMETRY_STATE_KEY)).catch((error) =>
+  withTelemetryLock(() => browserApi.storage.local.remove(TELEMETRY_STATE_KEY)).catch((error) =>
     console.warn("Lokale Statistikzaehler konnten nicht geloescht werden:", error.message),
   );
 });
 
-chrome.alarms.onAlarm.addListener((alarm) => {
+globalThis.browser?.permissions?.onRemoved?.addListener((removedPermissions) => {
+  const removedData = removedPermissions?.data_collection;
+  if (
+    !Array.isArray(removedData) ||
+    !removedData.some((dataType) => ["browsingActivity", "technicalAndInteraction"].includes(dataType))
+  )
+    return;
+  telemetryAbortController?.abort();
+  withTelemetryLock(() =>
+    browserApi.storage.local.remove([TELEMETRY_CONSENT_KEY, TELEMETRY_STATE_KEY]),
+  ).catch((error) =>
+    console.warn(
+      "Lokale Statistikzustimmung konnte nach dem Berechtigungsentzug nicht geloescht werden:",
+      error.message,
+    ),
+  );
+});
+
+browserApi.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === REPORT_COOLDOWN_ALARM) {
     loadStoredCooldown()
       .then(() => ensureCooldownAlarm())
@@ -710,7 +746,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   updateTask.catch((error) => console.warn("Suchfilter-Aktualisierung fehlgeschlagen:", error.message));
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+browserApi.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const task =
     message?.type === "lookup"
       ? lookup(Array.isArray(message.hostnames) ? message.hostnames.slice(0, 100) : [])

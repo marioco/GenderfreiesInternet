@@ -9,6 +9,9 @@ import {
   verifySignedPayload,
 } from "./snapshot.js";
 
+function browserApi() {
+  return globalThis.browser?.runtime ? globalThis.browser : globalThis.chrome;
+}
 const SHARD_COUNT = 64;
 const MAX_SHARD_ENTRIES = 100000;
 const SHARD_KEY_PREFIX = "signedDatasetShardV1:";
@@ -237,7 +240,7 @@ async function fetchDataFile(baseUrl, descriptor, publicKeys, expectedBase, expe
 
 async function updateShard(shard, manifest, baseUrl, publicKeys) {
   const key = shardKey(shard);
-  const stored = await chrome.storage.local.get(key);
+  const stored = await browserApi().storage.local.get(key);
   const raw = stored[key];
   let cache = sanitizeCache(raw?.cache, new Date(), MAX_SHARD_ENTRIES);
   let version = Number.isSafeInteger(raw?.version) ? raw.version : -1;
@@ -271,7 +274,7 @@ async function updateShard(shard, manifest, baseUrl, publicKeys) {
   }
   if (version !== manifest.version) throw new SnapshotError("Paketstand ist nicht aktuell");
   const wrapper = { cache, snapshotFile: snapshot.file, version };
-  await chrome.storage.local.set({
+  await browserApi().storage.local.set({
     [key]: wrapper,
     [shardCountKey(shard)]: Object.keys(cache.entries).length,
   });
@@ -285,14 +288,14 @@ async function requestedShards(hostnames) {
 }
 
 async function activeShards(requested) {
-  const stored = await chrome.storage.local.get(ACTIVE_SHARDS_KEY);
+  const stored = await browserApi().storage.local.get(ACTIVE_SHARDS_KEY);
   const previous = Array.isArray(stored[ACTIVE_SHARDS_KEY])
     ? stored[ACTIVE_SHARDS_KEY].filter(
         (value) => Number.isSafeInteger(value) && value >= 0 && value < SHARD_COUNT,
       )
     : [];
   const combined = [...new Set([...previous, ...requested])].sort((left, right) => left - right);
-  await chrome.storage.local.set({ [ACTIVE_SHARDS_KEY]: combined });
+  await browserApi().storage.local.set({ [ACTIVE_SHARDS_KEY]: combined });
   return combined;
 }
 
@@ -373,7 +376,7 @@ export async function lookupDataset(hostnames, config) {
 
 export async function lookupDatasetCached(hostnames) {
   const requested = await requestedShards(hostnames);
-  const stored = await chrome.storage.local.get(requested.shards.map(shardKey));
+  const stored = await browserApi().storage.local.get(requested.shards.map(shardKey));
   const entries = {};
   for (const [domain, shard] of requested.pairs) {
     const wrapper = stored[shardKey(shard)];
@@ -385,7 +388,7 @@ export async function lookupDatasetCached(hostnames) {
 }
 
 export async function datasetCachedDomainCount() {
-  const activeStored = await chrome.storage.local.get(ACTIVE_SHARDS_KEY);
+  const activeStored = await browserApi().storage.local.get(ACTIVE_SHARDS_KEY);
   const shards = Array.isArray(activeStored[ACTIVE_SHARDS_KEY])
     ? [...new Set(activeStored[ACTIVE_SHARDS_KEY])].filter(
         (value) => Number.isSafeInteger(value) && value >= 0 && value < SHARD_COUNT,
@@ -393,20 +396,20 @@ export async function datasetCachedDomainCount() {
     : [];
   if (!shards.length) return 0;
   const countKeys = shards.map(shardCountKey);
-  const stored = await chrome.storage.local.get(countKeys);
+  const stored = await browserApi().storage.local.get(countKeys);
   const missing = shards.filter((shard) => {
     const count = stored[shardCountKey(shard)];
     return !Number.isSafeInteger(count) || count < 0 || count > MAX_SHARD_ENTRIES;
   });
   if (missing.length) {
-    const wrappers = await chrome.storage.local.get(missing.map(shardKey));
+    const wrappers = await browserApi().storage.local.get(missing.map(shardKey));
     const repaired = {};
     for (const shard of missing) {
       repaired[shardCountKey(shard)] = Object.keys(
         sanitizeCache(wrappers[shardKey(shard)]?.cache, new Date(), MAX_SHARD_ENTRIES).entries,
       ).length;
     }
-    await chrome.storage.local.set(repaired);
+    await browserApi().storage.local.set(repaired);
     Object.assign(stored, repaired);
   }
   let total = 0;

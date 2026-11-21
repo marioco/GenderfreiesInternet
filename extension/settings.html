@@ -72,22 +72,26 @@
           gefiltert; leichtes Gendern wird nur mit der zweiten Auswahl zusätzlich gefiltert.
         </p>
         <p id="filter-status" class="status-line" role="status" aria-live="polite"></p>
-        <h2>Freiwillige Statistik</h2>
-        <label class="setting-row" for="share-statistics">
-          <input id="share-statistics" type="checkbox" />
-          <span>
-            <strong>Ausblendungsstatistik teilen</strong><br />
-            Hilft zu zählen, wie oft gesperrte Domains aus Suchergebnissen entfernt wurden.
-          </span>
-        </label>
-        <p>
-          Diese Funktion ist standardmäßig ausgeschaltet. Bei Zustimmung werden nur Domain und
-          zusammengefasste Anzahl übertragen – keine Suchbegriffe, URL-Pfade, Suchmaschine,
-          Uhrzeit, Installationskennung oder Seiteninhalte. Noch nicht gesendete Zähler werden beim
-          Ausschalten gelöscht. Bereits übermittelte, nicht zuordenbare Summen können nicht
-          nachträglich einer Person zugeordnet oder einzeln gelöscht werden.
-        </p>
-        <p id="settings-status" class="status-line" role="status" aria-live="polite"></p>
+        <!-- optional-statistics:start -->
+        <section id="optional-statistics-settings">
+          <h2>Freiwillige Statistik</h2>
+          <label class="setting-row" for="share-statistics">
+            <input id="share-statistics" type="checkbox" />
+            <span>
+              <strong>Ausblendungsstatistik teilen</strong><br />
+              Hilft zu zählen, wie oft gesperrte Domains aus Suchergebnissen entfernt wurden.
+            </span>
+          </label>
+          <p>
+            Diese Funktion ist standardmäßig ausgeschaltet. Bei Zustimmung werden nur Domain und
+            zusammengefasste Anzahl übertragen – keine Suchbegriffe, URL-Pfade, Suchmaschine,
+            Uhrzeit, Installationskennung oder Seiteninhalte. Noch nicht gesendete Zähler werden beim
+            Ausschalten gelöscht. Bereits übermittelte, nicht zuordenbare Summen können nicht
+            nachträglich einer Person zugeordnet oder einzeln gelöscht werden.
+          </p>
+          <p id="settings-status" class="status-line" role="status" aria-live="polite"></p>
+        </section>
+        <!-- optional-statistics:end -->
         <h2>Feste Regeln</h2>
         <ul>
           <li>Hard wird standardmäßig ausgeblendet; Light kann zusätzlich aktiviert werden.</li>
@@ -98,7 +102,7 @@
         <p>
           Aktivieren, deaktivieren oder entfernen lässt sich GF in der Erweiterungsverwaltung des
           Browsers: in Chrome unter <code>chrome://extensions</code>, in Brave unter
-          <code>brave://extensions</code>.
+          <code>brave://extensions</code> und in Edge unter <code>edge://extensions</code>.
         </p>
       </section>
 
@@ -153,6 +157,7 @@
       </p>
     </main>
     <script src="exceptions.js"></script>
+    <script src="data-consent.js"></script>
     <script src="settings.js"></script>
   </body>
 </html>

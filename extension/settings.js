@@ -1,5 +1,6 @@
 "use strict";
 
+const browserApi = globalThis.browser?.runtime ? globalThis.browser : globalThis.chrome;
 const {
   CUSTOM_KEY,
   MAX_CUSTOM_DOMAINS,
@@ -10,6 +11,7 @@ const {
   sanitizePredefinedOverrides,
   validateCustomDomain,
 } = globalThis.SuchfilterExceptions;
+const { has: hasDataConsent, request: requestDataConsent } = globalThis.SuchfilterDataConsent;
 
 const CONSENT_KEY = "shareAnonymousStatisticsV1";
 const FILTER_LIGHT_KEY = "blockLightGenderingV1";
@@ -113,7 +115,7 @@ function renderPredefinedExceptions() {
       if (input.checked === rule.defaultException) delete next[rule.id];
       else next[rule.id] = input.checked;
       try {
-        await chrome.storage.local.set({ [PREDEFINED_KEY]: next });
+        await browserApi.storage.local.set({ [PREDEFINED_KEY]: next });
         predefinedOverrides = next;
         updatePredefinedRow(input, rule);
         showStatus(predefinedStatusLine, `${rule.label} wurde gespeichert.`);
@@ -202,8 +204,13 @@ function validateCustomInputs() {
 }
 
 async function initializeSettings() {
+  if (checkbox === null || statusLine === null) {
+    await browserApi.storage.local.remove([CONSENT_KEY, PENDING_KEY]);
+    return;
+  }
+
   try {
-    const filterStored = await chrome.storage.local.get(FILTER_LIGHT_KEY);
+    const filterStored = await browserApi.storage.local.get(FILTER_LIGHT_KEY);
     const blockLight = filterStored[FILTER_LIGHT_KEY] === true;
     selectFilterLevel(blockLight);
     showFilterStatus(blockLight);
@@ -213,8 +220,12 @@ async function initializeSettings() {
   }
 
   try {
-    const stored = await chrome.storage.local.get(CONSENT_KEY);
+    const stored = await browserApi.storage.local.get(CONSENT_KEY);
     checkbox.checked = stored[CONSENT_KEY] === true;
+    if (checkbox.checked && !(await hasDataConsent(["browsingActivity", "technicalAndInteraction"]))) {
+      checkbox.checked = false;
+      await browserApi.storage.local.remove([CONSENT_KEY, PENDING_KEY]);
+    }
     showStatus(
       statusLine,
       checkbox.checked ? "Freiwillige Statistik ist eingeschaltet." : "Freiwillige Statistik ist aus.",
@@ -227,7 +238,7 @@ async function initializeSettings() {
 
 async function initializePredefinedExceptions() {
   try {
-    const stored = await chrome.storage.local.get(PREDEFINED_KEY);
+    const stored = await browserApi.storage.local.get(PREDEFINED_KEY);
     predefinedOverrides = sanitizePredefinedOverrides(stored[PREDEFINED_KEY]);
     renderPredefinedExceptions();
     showStatus(predefinedStatusLine, "Vordefinierte Ausnahmen sind aktiv.");
@@ -241,7 +252,7 @@ async function initializePredefinedExceptions() {
 async function initializeCustomExceptions() {
   createCustomInputs();
   try {
-    const stored = await chrome.storage.local.get(CUSTOM_KEY);
+    const stored = await browserApi.storage.local.get(CUSTOM_KEY);
     const domains = sanitizeCustomDomains(stored[CUSTOM_KEY]);
     domains.forEach((domain, index) => {
       customInputs[index].value = domain;
@@ -259,12 +270,12 @@ for (const choice of filterChoices) {
     const blockLight = choice.value === "hard-light";
     for (const item of filterChoices) item.disabled = true;
     try {
-      await chrome.storage.local.set({ [FILTER_LIGHT_KEY]: blockLight });
+      await browserApi.storage.local.set({ [FILTER_LIGHT_KEY]: blockLight });
       showFilterStatus(blockLight);
     } catch (error) {
       let storedValue = false;
       try {
-        const stored = await chrome.storage.local.get(FILTER_LIGHT_KEY);
+        const stored = await browserApi.storage.local.get(FILTER_LIGHT_KEY);
         storedValue = stored[FILTER_LIGHT_KEY] === true;
       } catch {
         storedValue = false;
@@ -277,11 +288,20 @@ for (const choice of filterChoices) {
   });
 }
 
-checkbox.addEventListener("change", async () => {
+checkbox?.addEventListener("change", async () => {
   checkbox.disabled = true;
   try {
-    await chrome.storage.local.set({ [CONSENT_KEY]: checkbox.checked });
-    if (!checkbox.checked) await chrome.storage.local.remove(PENDING_KEY);
+    if (checkbox.checked) {
+      const granted = await requestDataConsent(["browsingActivity", "technicalAndInteraction"]);
+      if (!granted) {
+        checkbox.checked = false;
+        await browserApi.storage.local.remove([CONSENT_KEY, PENDING_KEY]);
+        showStatus(statusLine, "Statistik bleibt aus: Datenschutz-Zustimmung wurde nicht erteilt.", true);
+        return;
+      }
+    }
+    await browserApi.storage.local.set({ [CONSENT_KEY]: checkbox.checked });
+    if (!checkbox.checked) await browserApi.storage.local.remove(PENDING_KEY);
     showStatus(
       statusLine,
       checkbox.checked
@@ -290,7 +310,7 @@ checkbox.addEventListener("change", async () => {
     );
   } catch (error) {
     try {
-      const stored = await chrome.storage.local.get(CONSENT_KEY);
+      const stored = await browserApi.storage.local.get(CONSENT_KEY);
       checkbox.checked = stored[CONSENT_KEY] === true;
     } catch {
       checkbox.checked = false;
@@ -312,7 +332,7 @@ customForm.addEventListener("submit", async (event) => {
   const button = customForm.querySelector('button[type="submit"]');
   button.disabled = true;
   try {
-    await chrome.storage.local.set({ [CUSTOM_KEY]: domains });
+    await browserApi.storage.local.set({ [CUSTOM_KEY]: domains });
     showStatus(customStatusLine, `${domains.length} eigene Ausnahmen gespeichert.`);
   } catch (error) {
     showStatus(customStatusLine, `Eigene Ausnahmen konnten nicht gespeichert werden: ${error.message}`, true);
@@ -327,5 +347,9 @@ async function initialize() {
 }
 
 initialize().catch((error) =>
-  showStatus(statusLine, `Einstellungen konnten nicht geladen werden: ${error.message}`, true),
+  showStatus(
+    statusLine || filterStatusLine,
+    `Einstellungen konnten nicht geladen werden: ${error.message}`,
+    true,
+  ),
 );
