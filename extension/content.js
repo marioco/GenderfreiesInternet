@@ -35,7 +35,11 @@
   const GOOGLE_NEWS_RETRY_DELAYS_MS = [250, 1000, 5000];
   const GOOGLE_NEWS_MAX_CACHE_ENTRIES = 500;
   const GOOGLE_NEWS_MAX_RPC_NODES = 10_000;
+  const GOOGLE_NEWS_MAX_PARAMETER_CANDIDATES = 1_000;
+  const GOOGLE_NEWS_MAX_PARAMETER_TAG_BYTES = 65_536;
+  const GOOGLE_NEWS_PARAMETER_ATTRIBUTES = new Set(["data-n-a-id", "data-n-a-ts", "data-n-a-sg"]);
   const GOOGLE_NEWS_ARTICLE_ID = /^[A-Za-z0-9_-]{20,2048}$/;
+  const HTML_ATTRIBUTE_PATTERN = /([^\s"'=<>`]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
   const googleNewsResolutionPromises = new Map();
   let processed = new WeakMap();
   let failedLookups = new WeakMap();
@@ -213,12 +217,62 @@
     }
   }
 
+  function decodeHtmlAttribute(value) {
+    const named = { amp: "&", apos: "'", gt: ">", lt: "<", quot: '"' };
+    return value.replace(/&(?:#([0-9]{1,7})|#x([0-9a-f]{1,6})|([a-z]+));/gi, (entity, decimal, hex, name) => {
+      if (name) return named[name.toLowerCase()] || entity;
+      const codePoint = Number.parseInt(decimal || hex, hex ? 16 : 10);
+      if (
+        !Number.isInteger(codePoint) ||
+        codePoint <= 0 ||
+        codePoint > 0x10ffff ||
+        (codePoint >= 0xd800 && codePoint <= 0xdfff)
+      )
+        return entity;
+      return String.fromCodePoint(codePoint);
+    });
+  }
+
+  function googleNewsTagEnd(html, start) {
+    let quote = null;
+    const limit = Math.min(html.length, start + GOOGLE_NEWS_MAX_PARAMETER_TAG_BYTES);
+    for (let index = start + 1; index < limit; index += 1) {
+      const character = html[index];
+      if (quote) {
+        if (character === quote) quote = null;
+      } else if (character === '"' || character === "'") quote = character;
+      else if (character === ">") return index;
+    }
+    return -1;
+  }
+
+  function googleNewsTagAttributes(tag) {
+    const attributes = new Map();
+    HTML_ATTRIBUTE_PATTERN.lastIndex = 0;
+    for (const match of tag.matchAll(HTML_ATTRIBUTE_PATTERN)) {
+      const name = match[1].toLowerCase();
+      if (!GOOGLE_NEWS_PARAMETER_ATTRIBUTES.has(name) || attributes.has(name)) continue;
+      attributes.set(name, decodeHtmlAttribute(match[2] ?? match[3] ?? match[4] ?? ""));
+      if (attributes.size === GOOGLE_NEWS_PARAMETER_ATTRIBUTES.size) break;
+    }
+    return attributes;
+  }
+
   function googleNewsDecodeParameters(html, articleId) {
-    const documentNode = new DOMParser().parseFromString(html, "text/html");
-    for (const node of documentNode.querySelectorAll("[data-n-a-id][data-n-a-ts][data-n-a-sg]")) {
-      if (node.getAttribute("data-n-a-id") !== articleId) continue;
-      const timestamp = node.getAttribute("data-n-a-ts") || "";
-      const signature = node.getAttribute("data-n-a-sg") || "";
+    const marker = "data-n-a-id";
+    let offset = 0;
+    for (let inspected = 0; inspected < GOOGLE_NEWS_MAX_PARAMETER_CANDIDATES; inspected += 1) {
+      const markerIndex = html.indexOf(marker, offset);
+      if (markerIndex === -1) break;
+      offset = markerIndex + marker.length;
+      const tagStart = html.lastIndexOf("<", markerIndex);
+      if (tagStart === -1 || markerIndex - tagStart >= GOOGLE_NEWS_MAX_PARAMETER_TAG_BYTES) continue;
+      const tagEnd = googleNewsTagEnd(html, tagStart);
+      if (tagEnd === -1 || tagEnd < markerIndex) continue;
+      const attributes = googleNewsTagAttributes(html.slice(tagStart, tagEnd + 1));
+      if (attributes.get("data-n-a-id") !== articleId) continue;
+      const timestamp = attributes.get("data-n-a-ts") || "";
+      const signature = attributes.get("data-n-a-sg") || "";
       const numericTimestamp = Number(timestamp);
       if (
         /^[0-9]{1,20}$/.test(timestamp) &&

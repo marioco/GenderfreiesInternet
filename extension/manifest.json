@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Genderfreies Internet",
   "short_name": "GF",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minimum_chrome_version": "137",
   "description": "Blendet Webseiten mit Gendersprache aus Suchergebnissen aus. Ein Stern zeigt geprüfte und noch unbekannte Domains.",
   "homepage_url": "https://lauraklaertdas.de/projekt/genderfreies-internet/",
@@ -12,12 +12,7 @@
     "48": "gf-icon-48.png",
     "128": "gf-icon-128.png"
   },
-  "permissions": [
-    "storage",
-    "unlimitedStorage",
-    "alarms",
-    "activeTab"
-  ],
+  "permissions": ["storage", "unlimitedStorage", "alarms", "activeTab"],
   "host_permissions": [
     "https://www.google.de/*",
     "https://www.google.com/*",
@@ -26,7 +21,7 @@
     "https://search.brave.com/*",
     "https://duckduckgo.com/*",
     "https://html.duckduckgo.com/*",
-    "https://lauraklaertdas.de/*"
+    "__API_ORIGIN__/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -46,12 +41,8 @@
         "https://duckduckgo.com/*",
         "https://html.duckduckgo.com/*"
       ],
-      "js": [
-        "content.js"
-      ],
-      "css": [
-        "styles.css"
-      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
       "run_at": "document_idle"
     }
   ],
